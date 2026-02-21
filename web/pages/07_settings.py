@@ -46,16 +46,19 @@ with st.expander("OpenAI 配置"):
         type="password",
         placeholder="sk-...",
         help="输入后自动保存到系统密钥链（实际实现需要 keyring 库）",
+        key="openai_api_key",
     )
     openai_base_url = st.text_input(
         "Base URL (可选)",
         placeholder="https://api.openai.com/v1",
         help="自定义 API 端点（如使用代理或兼容服务）",
+        key="openai_base_url",
     )
     openai_model = st.text_input(
         "默认模型",
         value="gpt-4o",
         placeholder="gpt-4o, gpt-4-turbo",
+        key="openai_model",
     )
     if openai_api_key:
         st.success("API Key 已设置（实际实现会保存到系统密钥链）")
@@ -69,11 +72,13 @@ with st.expander("Anthropic 配置"):
         "API Key",
         type="password",
         placeholder="sk-ant-...",
+        key="anthropic_api_key",
     )
     anthropic_model = st.text_input(
         "默认模型",
         value="claude-3-opus-20240229",
         placeholder="claude-3-opus-20240229, claude-3-sonnet-20240229",
+        key="anthropic_model",
     )
     if anthropic_api_key:
         st.success("API Key 已设置")
@@ -87,11 +92,13 @@ with st.expander("Ollama 配置"):
         "Base URL",
         value="http://localhost:11434",
         placeholder="http://localhost:11434",
+        key="ollama_base_url",
     )
     ollama_model = st.text_input(
         "默认模型",
         value="qwen3:4b",
         placeholder="qwen3:4b, llama2:7b",
+        key="ollama_model",
     )
     ollama_status = st.checkbox("启用 Ollama", value=True)
     if ollama_status:
@@ -106,11 +113,13 @@ with st.expander("DeepSeek 配置"):
         "API Key",
         type="password",
         placeholder="sk-...",
+        key="deepseek_api_key",
     )
     deepseek_model = st.text_input(
         "默认模型",
         value="deepseek-chat",
         placeholder="deepseek-chat",
+        key="deepseek_model",
     )
     if deepseek_api_key:
         st.success("API Key 已设置")
@@ -124,11 +133,13 @@ with st.expander("DashScope 配置"):
         "API Key",
         type="password",
         placeholder="sk-...",
+        key="dashscope_api_key",
     )
     dashscope_model = st.text_input(
         "默认模型",
         value="qwen-turbo",
         placeholder="qwen-turbo, qwen-plus",
+        key="dashscope_model",
     )
     if dashscope_api_key:
         st.success("API Key 已设置")
@@ -250,12 +261,14 @@ mongo_connection_string = st.text_input(
     value="mongodb://localhost:27017/",
     placeholder="mongodb://localhost:27017/ or mongodb+srv://...",
     help="MongoDB 连接字符串",
+    key="mongo_connection_string",
 )
 
 mongo_database = st.text_input(
     "数据库名称",
     value="pstds",
     placeholder="pstds",
+    key="mongo_database",
 )
 
 # 测试连接按钮
