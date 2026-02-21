@@ -3,6 +3,7 @@
 
 import streamlit as st
 from datetime import date, timedelta
+import random
 import sys
 import os
 
