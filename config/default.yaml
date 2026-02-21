@@ -1,0 +1,64 @@
+# config/default.yaml --- PSTDS v1.0 默认配置
+
+# ─── 时间隔离配置（不可关闭）────────────────────
+temporal:
+  enforce_isolation: true
+  audit_log_path: "./data/logs/temporal_audit.jsonl"
+  news_timestamp_strict: true
+
+# ─── LLM 配置 ──────────────────────────────────────
+llm:
+  provider: 'ollama'
+  deep_think_model: 'qwen3:4b'
+  quick_think_model: 'qwen3:4b'
+  temperature: 0.0
+  max_debate_rounds: 2
+  ollama_base_url: 'http://localhost:11434'
+  token_budget:
+    l0_limit: 5000
+    l1_limit: 20000
+    l2_limit: 60000
+    l3_limit: 120000
+  monthly_cost_alert_usd: 10.0
+  auto_fallback_to_local: true
+
+# ─── API Keys 配置──────────────────────────────────
+api_keys:
+  openai: null
+  anthropic: null
+  google: null
+  deepseek: null
+  dashscope: null
+
+# ─── 分析配置 ──────────────────────────────────────
+analysis:
+  default_depth: 'L2'
+  risk_profile: 'balanced'
+  enable_volatility_adjustment: true
+  analysts: ['technical', 'fundamentals', 'news', 'sentiment']
+  debate_referee_enabled: true
+  min_debate_quality_score: 5.0
+  consecutive_buy_alert: 3
+
+# ─── 数据源配置 ────────────────────────────────────
+data:
+  us_stock_primary: 'yfinance'
+  us_stock_fallback: 'alpha_vantage'
+  cn_a_stock_primary: 'akshare'
+  cn_a_stock_fallback: 'local_csv'
+  hk_stock_primary: 'akshare'
+  hk_stock_fallback: 'yfinance'
+  cache_ttl_hours: 24
+  news_ttl_hours: 6
+  news_relevance_threshold: 0.6
+
+# ─── MongoDB 配置 ───────────────────────────────────
+mongodb:
+  connection_string: 'mongodb://localhost:27017/'
+  database_name: 'pstds'
+# ─── UI 配置 ───────────────────────────────────────
+ui:
+  theme: 'light'
+  language: 'zh_CN'
+  default_page: '01_股票分析'
+  show_cost_warning: true

@@ -1,0 +1,20 @@
+{
+  "action": "BUY",
+  "confidence": 0.72,
+  "conviction": "MEDIUM",
+  "primary_reason": "强劲的技术面突破结合积极的基本面数据支撑买入决策",
+  "target_price_low": 182.0,
+  "target_price_high": 195.0,
+  "time_horizon": "2-4 weeks",
+  "risk_factors": ["宏观经济不确定性", "估值偏高风险", "竞争加剧"],
+  "data_sources": [
+    {"name": "yfinance", "url": null, "data_timestamp": "2024-01-02T00:00:00Z", "market_type": "US", "fetched_at": "2024-01-02T09:00:00Z"}
+  ],
+  "analysis_date": "2024-01-02",
+  "analysis_timestamp": "2024-01-02T09:30:00Z",
+  "volatility_adjustment": 1.0,
+  "debate_quality_score": 7.5,
+  "symbol": "AAPL",
+  "market_type": "US",
+  "insufficient_data": false
+}
