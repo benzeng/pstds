@@ -52,7 +52,7 @@ st.sidebar.subheader("系统状态")
 st.sidebar.info("🟡 MongoDB 配置完成")
 st.sidebar.info("🟢 LLM 配置完成")
 
-st.sidebar.metric("本月成本", "\$0.00")
+st.sidebar.metric("本月成本", "$0.00")
 
 st.sidebar.markdown("---")
 

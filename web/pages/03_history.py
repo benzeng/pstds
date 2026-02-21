@@ -176,7 +176,7 @@ if filtered_data:
                 # 成本信息
                 st.write(f"**创建时间:** {record['created_at']}")
                 st.write(f"**使用 Token:** {record['tokens']:,}")
-                st.write(f"**成本 (USD):** \${record['cost_usd']:.4f}")
+                st.write(f"**成本 (USD):** ${record['cost_usd']:.4f}")
 
             # 操作按钮
             col_btn1, col_btn2, col_btn3 = st.columns(3)
@@ -216,7 +216,7 @@ with col1:
     st.metric("总记录数", len(st.session_state["history_data"]))
 with col2:
     total_cost = sum(record["cost_usd"] for record in st.session_state["history_data"])
-    st.metric("总成本 (USD)", f"\${total_cost:.4f}")
+    st.metric("总成本 (USD)", f"${total_cost:.4f}")
 with col3:
     total_tokens = sum(record["tokens"] for record in st.session_state["history_data"])
     st.metric("总 Token", f"{total_tokens:,}")
@@ -259,8 +259,8 @@ if stock_costs:
         table_data.append({
             "股票代码": symbol,
             "分析次数": data["count"],
-            "总成本 (USD)": f"\${data['cost']:.4f}",
-            "平均成本 (USD)": f"\${data['cost'] / data['count']:.4f}",
+            "总成本 (USD)": f"${data['cost']:.4f}",
+            "平均成本 (USD)": f"${data['cost'] / data['count']:.4f}",
             "总 Token": f"{data['tokens']:,}",
             "平均 Token": f"{data['tokens'] // data['count']:,}",
         })

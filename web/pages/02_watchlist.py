@@ -144,7 +144,7 @@ if filtered_watchlist:
                 with col_btn1:
                     if st.button(f"📊 分析", key=f"analyze_{stock['symbol']}"):
                         st.info(f"跳转到 {stock['symbol']} 分析页面")
-                        st.switch_page("股票分析")
+                        st.switch_page("pages/01_analysis.py")
 
                 with col_btn2:
                     if st.button(f"🗑️ 删除", key=f"delete_{stock['symbol']}"):
@@ -188,7 +188,7 @@ st.markdown("---")
 # --- 统计信息 ---
 st.header("统计信息", divider="blue")
 
-col1, col2, col3 = st4 = st.columns(3)
+col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("总数量", len(st.session_state["watchlist"]))
 with col2:

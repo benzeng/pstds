@@ -194,7 +194,7 @@ with st.expander("展开成本估算"):
     with col1:
         st.metric("预计 Token 使用", f"{depth_token:,}")
     with col2:
-        st.metric("预计成本 (USD)", f"\${estimated_cost:.4f}")
+        st.metric("预计成本 (USD)", f"${estimated_cost:.4f}")
 
 st.markdown("---")
 
@@ -317,9 +317,9 @@ if st.session_state.get("show_result", False):
         if decision.target_price_low and decision.target_price_high:
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("目标价下限", f"\${decision.target_price_low:.2f}")
+                st.metric("目标价下限", f"${decision.target_price_low:.2f}")
             with col2:
-                st.metric("目标价上限", f"\${decision.target_price_high:.2f}")
+                st.metric("目标价上限", f"${decision.target_price_high:.2f}")
             st.write(f"时间框架: {decision.time_horizon}")
 
         st.markdown("---")

@@ -218,9 +218,9 @@ if st.session_state.get("show_backtest_result", False):
         # 基本指标
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("初始资金", f"\${result['initial_capital']:,.2f}")
+            st.metric("初始资金", f"${result['initial_capital']:,.2f}")
         with col2:
-            st.metric("最终净值", f"\${result['final_nav']:,.2f}")
+            st.metric("最终净值", f"${result['final_nav']:,.2f}")
         with col3:
             return_color = "normal" if result['total_return'] >= 0 else "inverse"
             st.metric("总收益率", f"{result['total_return']:.2f}%", delta=None, delta_color=return_color)
