@@ -2,7 +2,7 @@
 # Markdown 导出器 - Phase 6 Task 1 (P6-T1)
 
 from typing import Dict, Any, Optional
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 import json
 
 
@@ -32,7 +32,7 @@ class MarkdownExporter:
         md_lines.append(f"**市场类型**: {result.get('market_type', 'N/A')}")
         md_lines.append(f"**回测期间**: {result.get('start_date', 'N/A')} 至 {result.get('end_date', 'N/A')}")
         md_lines.append(f"**交易天数**: {result.get('trading_days_count', 0)} 天")
-        md_lines.append(f"**生成时间**: {datetime.utcnow().isoformat()}")
+        md_lines.append(f"**生成时间**: {datetime.now(UTC).isoformat()}")
         md_lines.append("")
 
         # 绩效摘要
@@ -129,7 +129,7 @@ class MarkdownExporter:
         md_lines.append(f"**股票代码**: {decision.get('symbol', 'N/A')}")
         md_lines.append(f"**市场类型**: {decision.get('market_type', 'N/A')}")
         md_lines.append(f"**分析日期**: {decision.get('analysis_date', 'N/A')}")
-        md_lines.append(f"**生成时间**: {datetime.utcnow().isoformat()}")
+        md_lines.append(f"**生成时间**: {datetime.now(UTC).isoformat()}")
         md_lines.append("")
 
         # 决策信息

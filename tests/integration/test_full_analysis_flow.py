@@ -1,7 +1,7 @@
 # tests/integration/test_full_analysis_flow.py
 import json
 import pytest
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock, MagicMock
 
@@ -20,7 +20,7 @@ def valid_decision_json():
             "conviction": "MEDIUM",
             "primary_reason": "Technical breakthrough",
             "symbol": "AAPL",
-            "data_sources": [{"name": "test", "url": None, "data_timestamp": datetime.utcnow().isoformat(), "market_type": "US", "fetched_at": datetime.utcnow().isoformat()}],
+            "data_sources": [{"name": "test", "url": None, "data_timestamp": datetime.now(UTC).isoformat(), "market_type": "US", "fetched_at": datetime.now(UTC).isoformat()}],
             "time_horizon": "2-4 weeks"
         }
     return json.loads(fixture_path.read_text(encoding="utf-8"))
@@ -52,8 +52,8 @@ class TestFullAnalysisFlow:
             target_price_high=valid_decision_json.get("target_price_high"),
             time_horizon=valid_decision_json.get("time_horizon", "2-4 weeks") or "1 month",
             risk_factors=valid_decision_json.get("risk_factors", ["market"]),
-            data_sources=[DataSource(name="test", url=None, data_timestamp=datetime.utcnow(), market_type="US", fetched_at=datetime.utcnow())],
-            analysis_date=date(2024, 1, 2), analysis_timestamp=datetime.utcnow(), volatility_adjustment=1.0,
+            data_sources=[DataSource(name="test", url=None, data_timestamp=datetime.now(UTC), market_type="US", fetched_at=datetime.now(UTC))],
+            analysis_date=date(2024, 1, 2), analysis_timestamp=datetime.now(UTC), volatility_adjustment=1.0,
             debate_quality_score=7.5, symbol=valid_decision_json.get("symbol", "AAPL"), market_type="US",
         )
         assert decision.action == valid_decision_json["action"]
@@ -62,8 +62,8 @@ class TestFullAnalysisFlow:
         decision = TradeDecision(
             action="INSUFFICIENT_DATA", confidence=0.0, conviction="LOW", primary_reason="Insufficient data",
             insufficient_data=True, target_price_low=None, target_price_high=None, time_horizon="",
-            risk_factors=["Data unavailable"], data_sources=[DataSource(name="error", url=None, data_timestamp=datetime.utcnow(), market_type="US", fetched_at=datetime.utcnow())], analysis_date=date(2024, 1, 2),
-            analysis_timestamp=datetime.utcnow(), volatility_adjustment=1.0,
+            risk_factors=["Data unavailable"], data_sources=[DataSource(name="error", url=None, data_timestamp=datetime.now(UTC), market_type="US", fetched_at=datetime.now(UTC))], analysis_date=date(2024, 1, 2),
+            analysis_timestamp=datetime.now(UTC), volatility_adjustment=1.0,
             debate_quality_score=0.0, symbol="AAPL", market_type="US",
         )
         assert decision.action == "INSUFFICIENT_DATA"
@@ -73,8 +73,8 @@ class TestFullAnalysisFlow:
             TradeDecision(
                 action="INVALID_ACTION", confidence=0.5, conviction="MEDIUM", primary_reason="Test",
                 insufficient_data=False, target_price_low=180.0, target_price_high=195.0, time_horizon="2-4 weeks",
-                risk_factors=["market"], data_sources=[DataSource(name="test", url=None, data_timestamp=datetime.utcnow(), market_type="US", fetched_at=datetime.utcnow())],
-                analysis_date=date(2024, 1, 2), analysis_timestamp=datetime.utcnow(), volatility_adjustment=1.0,
+                risk_factors=["market"], data_sources=[DataSource(name="test", url=None, data_timestamp=datetime.now(UTC), market_type="US", fetched_at=datetime.now(UTC))],
+                analysis_date=date(2024, 1, 2), analysis_timestamp=datetime.now(UTC), volatility_adjustment=1.0,
                 debate_quality_score=7.5, symbol="AAPL", market_type="US",
             )
 

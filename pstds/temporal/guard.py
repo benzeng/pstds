@@ -1,7 +1,7 @@
 # pstds/temporal/guard.py
 # ISD v1.0 Section 5: TemporalGuard 接口契约
 
-from datetime import datetime, date
+from datetime import datetime, date, UTC
 from typing import List
 
 from pstds.data.models import NewsItem
@@ -67,7 +67,7 @@ class TemporalGuard:
             logger = AuditLogger()
             logger.log(
                 AuditRecord(
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     session_id=ctx.session_id,
                     analysis_date=datetime.combine(analysis_date, datetime.min.time()),
                     data_source=caller_info,
@@ -112,7 +112,7 @@ class TemporalGuard:
                 logger = AuditLogger()
                 logger.log(
                     AuditRecord(
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(UTC),
                         session_id=ctx.session_id,
                         analysis_date=datetime.combine(ctx.analysis_date, datetime.min.time()),
                         data_source=f"news:{news.source}",
@@ -129,11 +129,11 @@ class TemporalGuard:
             logger = AuditLogger()
             logger.log(
                 AuditRecord(
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     session_id=ctx.session_id,
                     analysis_date=datetime.combine(ctx.analysis_date, datetime.min.time()),
                     data_source="news_filter",
-                    data_timestamp=datetime.utcnow(),
+                    data_timestamp=datetime.now(UTC),
                     is_compliant=True,
                     violation_detail=f"过滤 {filtered_count} 条未来新闻",
                     caller_module="TemporalGuard.filter_news",

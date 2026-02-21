@@ -3,7 +3,7 @@
 # asyncio 令牌桶队列实现
 
 from typing import Callable, Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass, field
 import asyncio
 import logging
@@ -48,7 +48,7 @@ class TokenBucket:
         self.capacity = capacity
         self.refill_rate = refill_rate
         self.tokens = capacity
-        self.last_refill = datetime.utcnow()
+        self.last_refill = datetime.now(UTC)
         self._lock = asyncio.Lock()
 
     async def acquire(self, tokens: int = 1, timeout: float = 60.0) -> bool:
@@ -64,7 +64,7 @@ class TokenBucket:
         """
         async with self._lock:
             # 补充令牌
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             elapsed = (now - self.last_refill).total_seconds()
             self.tokens = min(
                 self.capacity,
@@ -95,7 +95,7 @@ class TokenBucket:
         """
         async with self._lock:
             # 补充令牌
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             elapsed = (now - self.last_refill).total_seconds()
             self.tokens = min(
                 self.capacity,
@@ -206,7 +206,7 @@ class TaskQueue:
 
                     # 执行任务
                     task.status = "running"
-                    task.started_at = datetime.utcnow()
+                    task.started_at = datetime.now(UTC)
                     self.running_tasks[task.task_id] = task
                     logger.info(f"开始执行任务: {task.task_id}")
 
@@ -218,14 +218,14 @@ class TaskQueue:
                             result = task.func(*task.args, **task.kwargs)
 
                         task.result = result
-                        task.completed_at = datetime.utcnow()
+                        task.completed_at = datetime.now(UTC)
                         task.status = "completed"
                         self.completed_tasks[task.task_id] = task
                         logger.info(f"任务完成: {task.task_id}")
 
                     except Exception as e:
                         task.error = str(e)
-                        task.completed_at = datetime.utcnow()
+                        task.completed_at = datetime.now(UTC)
                         task.status = "failed"
                         self.failed_tasks[task.task_id] = task
                         logger.error(f"任务失败: {task.task_id}, 错误: {e}")
@@ -245,7 +245,7 @@ class TaskQueue:
         标记任务失败
         """
         task.error = error
-        task.completed_at = datetime.utcnow()
+        task.completed_at = datetime.now(UTC)
         task.status = "failed"
         self.failed_tasks[task.task_id] = task
 

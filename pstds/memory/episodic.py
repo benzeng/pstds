@@ -2,7 +2,7 @@
 # 情景记忆系统 - Phase 3 Task 5
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import json
 from pathlib import Path
 
@@ -91,7 +91,7 @@ class EpisodicMemory:
             "symbol": symbol,
             "action": action,
             "confidence": confidence,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "decision_type": "trade",
         }
 
@@ -100,7 +100,7 @@ class EpisodicMemory:
             self.collection.add(
                 documents=[document_text],
                 metadatas=[document_metadata],
-                ids=[f"{symbol}_{action}_{datetime.utcnow().isoformat()}"]
+                ids=[f"{symbol}_{action}_{datetime.now(UTC).isoformat()}"]
             )
             return self.collection.last_insert_id
         except Exception as e:
@@ -193,7 +193,7 @@ class EpisodicMemory:
             )
 
             # 过滤最近 N 天的记录
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             cutoff_date = now - timedelta(days=days_back)
 
             recent_results = []
@@ -233,7 +233,7 @@ class EpisodicMemory:
             return 0
 
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+            cutoff_date = datetime.now(UTC) - timedelta(days=days_to_keep)
             cutoff_str = cutoff_date.isoformat()
 
             # 获取需要删除的记录

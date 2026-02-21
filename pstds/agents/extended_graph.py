@@ -2,7 +2,7 @@
 # 扩展 TradingAgentsGraph - Phase 3 Task 3
 
 from typing import Dict, List, Optional, Any
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from pydantic import ValidationError
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
@@ -186,7 +186,7 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
 
             # 元数据
             analysis_date = ctx.analysis_date
-            analysis_timestamp = datetime.utcnow()
+            analysis_timestamp = datetime.now(UTC)
             volatility_adjustment = final_decision.get("volatility_adjustment", 1.0)
             debate_quality_score = final_decision.get("debate_quality_score", 7.5)
             market_type = self._infer_market_type(symbol)
@@ -247,7 +247,7 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
     ) -> List[DataSource]:
         """创建数据来源列表"""
         data_sources = []
-        data_timestamp = datetime.utcnow()
+        data_timestamp = datetime.now(UTC)
 
         # 检查是否有数据源信息
         for source in ["market_report", "news_report", "fundamentals_report"]:
@@ -312,13 +312,13 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
                 DataSource(
                     name="error",
                     url=None,
-                    data_timestamp=datetime.utcnow(),
+                    data_timestamp=datetime.now(UTC),
                     market_type="US",
-                    fetched_at=datetime.utcnow(),
+                    fetched_at=datetime.now(UTC),
                 )
             ],
             analysis_date=ctx.analysis_date,
-            analysis_timestamp=datetime.utcnow(),
+            analysis_timestamp=datetime.now(UTC),
             volatility_adjustment=1.0,
             debate_quality_score=0.0,
             symbol=symbol,
@@ -364,7 +364,7 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
                     risk_factors=data.get("risk_factors", []),
                     data_sources=data.get("data_sources", []),
                     analysis_date=ctx.analysis_date,
-                    analysis_timestamp=datetime.utcnow(),
+                    analysis_timestamp=datetime.now(UTC),
                     volatility_adjustment=data.get("volatility_adjustment", 1.0),
                     debate_quality_score=data.get("debate_quality_score", 7.5),
                     symbol=symbol,

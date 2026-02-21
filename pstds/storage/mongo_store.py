@@ -3,7 +3,7 @@
 # ISD v1.0 Section 5: MongoDB 集合设计
 
 from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import datetime, date, UTC
 from hashlib import sha256
 import json
 import os
@@ -156,7 +156,7 @@ class MongoStore:
                 raise ValueError(f"缺少必需字段: {field}")
 
         # 准备文档
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         doc = {
             "symbol": state["symbol"],

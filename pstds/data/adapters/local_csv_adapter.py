@@ -3,7 +3,7 @@
 
 import pandas as pd
 from typing import List, Literal
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from pathlib import Path
 
 from pstds.temporal.context import TemporalContext
@@ -108,7 +108,7 @@ class LocalCSVAdapter:
             "earnings_date": None,
             "report_period": None,
             "data_source": self.name,
-            "fetched_at": datetime.utcnow(),
+            "fetched_at": datetime.now(UTC),
         }
 
     def get_news(

@@ -2,7 +2,7 @@
 # 前视偏差回归测试 - Phase 3 Task 6 (REG-001~005)
 
 import pytest
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from unittest.mock import Mock, patch, MagicMock
 
 from pstds.temporal.context import TemporalContext
@@ -91,9 +91,9 @@ class TestBacktestNoLookahead:
         test_data_source = DataSource(
             name="test_source",
             url=None,
-            data_timestamp=datetime.utcnow(),
+            data_timestamp=datetime.now(UTC),
             market_type="US",
-            fetched_at=datetime.utcnow(),
+            fetched_at=datetime.now(UTC),
         )
 
         decision1 = TradeDecision(
@@ -105,7 +105,7 @@ class TestBacktestNoLookahead:
             risk_factors=["Market risk"],
             data_sources=[test_data_source],
             analysis_date=date(2024, 1, 2),
-            analysis_timestamp=datetime.utcnow(),
+            analysis_timestamp=datetime.now(UTC),
             volatility_adjustment=1.0,
             debate_quality_score=7.5,
             symbol="AAPL",
@@ -122,7 +122,7 @@ class TestBacktestNoLookahead:
             risk_factors=["Market risk"],
             data_sources=[test_data_source],
             analysis_date=date(2024, 1, 2),
-            analysis_timestamp=datetime.utcnow(),
+            analysis_timestamp=datetime.now(UTC),
             volatility_adjustment=1.0,
             debate_quality_score=7.5,
             symbol="AAPL",

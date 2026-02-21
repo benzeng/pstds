@@ -2,7 +2,7 @@
 # ISD v1.0 Section 2.2: TemporalContext（时间上下文）
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Literal
 from uuid import uuid4
 
@@ -20,7 +20,7 @@ class TemporalContext:
 
     mode: Literal["LIVE", "BACKTEST"]  # 运行模式
 
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     session_id: str = field(default_factory=lambda: str(uuid4()))
 

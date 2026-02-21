@@ -4,7 +4,7 @@
 import yfinance as yf
 import pandas as pd
 from typing import List, Literal
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 
 from pstds.temporal.context import TemporalContext
 from pstds.temporal.guard import TemporalGuard, RealtimeAPIBlockedError
@@ -83,7 +83,7 @@ class YFinanceAdapter:
             df["data_source"] = self.name
 
             # 添加 fetched_at 列
-            df["fetched_at"] = datetime.utcnow()
+            df["fetched_at"] = datetime.now(UTC)
 
             # 确保列名和顺序（只保留存在的列）
             required_cols = ["date", "open", "high", "low", "close", "volume", "adj_close", "data_source"]
@@ -128,7 +128,7 @@ class YFinanceAdapter:
                 "earnings_date": info.get("nextEarningsDate"),
                 "report_period": info.get("mostRecentQuarter"),
                 "data_source": self.name,
-                "fetched_at": datetime.utcnow(),
+                "fetched_at": datetime.now(UTC),
             }
 
             return result
@@ -145,7 +145,7 @@ class YFinanceAdapter:
                 "earnings_date": None,
                 "report_period": None,
                 "data_source": self.name,
-                "fetched_at": datetime.utcnow(),
+                "fetched_at": datetime.now(UTC),
             }
 
     def get_news(

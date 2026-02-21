@@ -4,7 +4,7 @@
 import akshare as ak
 import pandas as pd
 from typing import List, Literal
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 
 from pstds.temporal.context import TemporalContext
 from pstds.temporal.guard import TemporalGuard, RealtimeAPIBlockedError
@@ -93,7 +93,7 @@ class AKShareAdapter:
 
             # 添加 data_source 和 fetched_at
             df["data_source"] = self.name
-            df["fetched_at"] = datetime.utcnow()
+            df["fetched_at"] = datetime.now(UTC)
 
             # 确保列名和顺序
             required_cols = ["date", "open", "high", "low", "close", "volume", "adj_close", "data_source"]
@@ -149,7 +149,7 @@ class AKShareAdapter:
                 result[en_key] = value
 
             result["data_source"] = self.name
-            result["fetched_at"] = datetime.utcnow()
+            result["fetched_at"] = datetime.now(UTC)
 
             return result
 
@@ -164,7 +164,7 @@ class AKShareAdapter:
                 "earnings_date": None,
                 "report_period": None,
                 "data_source": self.name,
-                "fetched_at": datetime.utcnow(),
+                "fetched_at": datetime.now(UTC),
             }
 
     def get_news(
@@ -195,7 +195,7 @@ class AKShareAdapter:
                 content = str(row.get("评论内容", ""))[:500]
 
                 # 时间戳处理
-                published_at = datetime.utcnow()  # 默认值
+                published_at = datetime.now(UTC)  # 默认值
                 if "发布时间" in row:
                     try:
                         published_at = pd.to_datetime(row["发布时间"])

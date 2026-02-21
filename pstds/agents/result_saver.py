@@ -3,7 +3,7 @@
 # ISD v1.0: result_persistence_node 作为 LangGraph 最后节点
 
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from pstds.storage.mongo_store import MongoStore
 from pstds.memory.episodic import EpisodicMemory
 
@@ -139,5 +139,5 @@ class ResultPersistenceNode:
         """
         analysis_id = self.save_result(state)
         state["analysis_id"] = analysis_id
-        state["saved_at"] = datetime.utcnow().isoformat()
+        state["saved_at"] = datetime.now(UTC).isoformat()
         return state

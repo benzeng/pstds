@@ -3,7 +3,7 @@
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class DebateQualityReport(BaseModel):
@@ -141,7 +141,7 @@ class DebateRefereeNode:
             logical_consistency=logical_consistency,
             debate_rounds=len(rounds),
             participating_analysts=participating_analysts,
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(UTC),
             recommended_action=recommended_action,
             warnings=warnings,
         )

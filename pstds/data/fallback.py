@@ -2,7 +2,7 @@
 # FallbackManager - 降级管理器
 
 from typing import List, Optional, Dict, Any
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from pathlib import Path
 import json
 
@@ -65,7 +65,7 @@ class DataQualityReport:
             "anomaly_alerts": self.anomaly_alerts,
             "filtered_news_count": self.filtered_news_count,
             "fallbacks_used": self.fallbacks_used,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
 

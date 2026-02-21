@@ -3,7 +3,7 @@
 # DDD v2.0 第 5.1 节：8 步交互流程
 
 import streamlit as st
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Dict, Any
 import sys
 import os
@@ -266,12 +266,12 @@ else:
             data_sources=[DataSource(
                 name="yfinance",
                 url=None,
-                data_timestamp=datetime.utcnow(),
+                data_timestamp=datetime.now(UTC),
                 market_type=market_type,
-                fetched_at=datetime.utcnow(),
+                fetched_at=datetime.now(UTC),
             )],
             analysis_date=analysis_date,
-            analysis_timestamp=datetime.utcnow(),
+            analysis_timestamp=datetime.now(UTC),
             volatility_adjustment=1.0,
             debate_quality_score=7.5,
             symbol=symbol,

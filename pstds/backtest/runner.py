@@ -3,7 +3,7 @@
 # DDD v2.0 相关章节：主控类，核心循环，零前视偏差
 
 from typing import Dict, List, Optional, Callable, Any
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 import pandas as pd
 
 from pstds.temporal.context import TemporalContext
@@ -148,12 +148,12 @@ class BacktestRunner:
                         data_sources=[DataSource(
                             name="error",
                             url=None,
-                            data_timestamp=datetime.utcnow(),
+                            data_timestamp=datetime.now(UTC),
                             market_type=market_type,
-                            fetched_at=datetime.utcnow(),
+                            fetched_at=datetime.now(UTC),
                         )],
                         analysis_date=trade_date,
-                        analysis_timestamp=datetime.utcnow(),
+                        analysis_timestamp=datetime.now(UTC),
                         volatility_adjustment=1.0,
                         debate_quality_score=0.0,
                         symbol=symbol,

@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, UTC
 import json
 import hashlib
 
@@ -123,7 +123,7 @@ class CacheManager:
         """检查缓存是否过期"""
         fetched = datetime.fromisoformat(fetched_at)
         expiry = fetched + timedelta(hours=ttl_hours)
-        return datetime.utcnow() > expiry
+        return datetime.now(UTC) > expiry
 
     def get_ohlcv(
         self,
@@ -177,7 +177,7 @@ class CacheManager:
             cursor = conn.cursor()
             for _, row in df.iterrows():
                 date_str = row["date"].isoformat() if pd.notna(row["date"]) else None
-                fetched_at = datetime.utcnow().isoformat()
+                fetched_at = datetime.now(UTC).isoformat()
 
                 cursor.execute("""
                     INSERT OR REPLACE INTO ohlcv_cache
@@ -254,7 +254,7 @@ class CacheManager:
         """设置基本面缓存"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            fetched_at = datetime.utcnow().isoformat()
+            fetched_at = datetime.now(UTC).isoformat()
 
             cursor.execute("""
                 INSERT OR REPLACE INTO fundamentals_cache
@@ -311,7 +311,7 @@ class CacheManager:
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            fetched_at = datetime.utcnow().isoformat()
+            fetched_at = datetime.now(UTC).isoformat()
 
             for news in news_list:
                 title = news.get("title", "")
@@ -323,7 +323,7 @@ class CacheManager:
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (
                     symbol,
-                    news.get("published_at", datetime.utcnow().isoformat()),
+                    news.get("published_at", datetime.now(UTC).isoformat()),
                     title_hash,
                     json.dumps(news),
                     fetched_at,
@@ -364,7 +364,7 @@ class CacheManager:
                 result_json, created_at, ttl_days = result
                 created = datetime.fromisoformat(created_at)
                 expiry = created + timedelta(days=ttl_days)
-                if datetime.utcnow() <= expiry:
+                if datetime.now(UTC) <= expiry:
                     return json.loads(result_json)
 
         return None
@@ -378,7 +378,7 @@ class CacheManager:
         """设置决策哈希缓存"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            created_at = datetime.utcnow().isoformat()
+            created_at = datetime.now(UTC).isoformat()
 
             cursor.execute("""
                 INSERT OR REPLACE INTO decision_hash_cache
