@@ -86,7 +86,7 @@ class MongoStore:
         ])
 
         # created_at 时间索引
-        self.analyses_collection.create_index("created_at", direction=DESCENDING)
+        self.analyses_collection.create_index([("created_at", DESCENDING)])
 
         # input_hash 哈希索引
         self.analyses_collection.create_index("input_hash", unique=True)
