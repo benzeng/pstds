@@ -143,7 +143,12 @@ if filtered_watchlist:
                 col_btn1, col_btn2 = st.columns(2)
                 with col_btn1:
                     if st.button(f"📊 分析", key=f"analyze_{stock['symbol']}"):
-                        st.info(f"跳转到 {stock['symbol']} 分析页面")
+                        # 保存选中的股票信息到 session state
+                        st.session_state.selected_stock = {
+                            "symbol": stock['symbol'],
+                            "market_type": stock['market_type'],
+                            "name": stock['name']
+                        }
                         st.switch_page("pages/01_analysis.py")
 
                 with col_btn2:

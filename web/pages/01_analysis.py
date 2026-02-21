@@ -29,17 +29,30 @@ st.markdown("---")
 # --- 步骤 1: 股票选择 ---
 st.header("步骤 1: 选择股票", divider="blue")
 
+# 检查是否从自选股页面跳转过来，并设置了选中的股票
+selected_stock = st.session_state.get("selected_stock")
+default_symbol = selected_stock["symbol"] if selected_stock else "AAPL"
+default_market_type = selected_stock["market_type"] if selected_stock else "US"
+
+# 清除 session state 中的选中股票，避免影响下次使用
+if "selected_stock" in st.session_state:
+    del st.session_state.selected_stock
+
 symbol = st.text_input(
     "股票代码",
     placeholder="例如: AAPL, 600519, 0700.HK",
-    value="AAPL",
+    value=default_symbol,
     max_chars=20,
 )
 
+# 设置市场类型的默认选择
+market_type_options = ["US", "CN_A", "HK"]
+default_index = market_type_options.index(default_market_type) if default_market_type in market_type_options else 0
+
 market_type = st.selectbox(
     "市场类型",
-    ["US", "CN_A", "HK"],
-    index=0,
+    market_type_options,
+    index=default_index,
 )
 
 # 根据股票代码推断市场类型
