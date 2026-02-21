@@ -176,14 +176,14 @@ class AKShareAdapter:
         """
         获取新闻数据
 
-        东方财富股吧情绪数据标准化为 NewsItem 格式
+        使用 stock_news_em 接口获取东方财富新闻
         """
         try:
             # BACKTEST 模式禁止调用实时 API
             TemporalGuard.assert_backtest_safe(ctx, f"{self.name}.get_news")
 
-            # 东方财富股吧情绪数据
-            df = ak.stock_comment_em(symbol=symbol)
+            # 东方财富新闻数据
+            df = ak.stock_news_em(symbol=symbol)
 
             if df.empty:
                 return []
@@ -191,8 +191,9 @@ class AKShareAdapter:
             # 转换为 NewsItem 格式
             news_items = []
             for _, row in df.iterrows():
-                # 情绪内容作为 content
-                content = str(row.get("评论内容", ""))[:500]
+                # 新闻标题和内容
+                title = str(row.get("新闻标题", ""))[:100]
+                content = str(row.get("新闻内容", ""))[:500]
 
                 # 时间戳处理
                 published_at = datetime.now(UTC)  # 默认值
@@ -203,11 +204,11 @@ class AKShareAdapter:
                         pass
 
                 news_items.append(NewsItem(
-                    title=row.get("评论用户", "用户评论"),
+                    title=title,
                     content=content,
                     published_at=published_at,
-                    source="东方财富股吧",
-                    url=None,
+                    source=row.get("新闻来源", "东方财富"),
+                    url=row.get("文章链接"),
                     relevance_score=0.65,  # 默认中等相关性
                     market_type="CN_A" if not symbol.endswith(".HK") else "HK",
                     symbol=symbol,
