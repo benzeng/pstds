@@ -256,9 +256,35 @@ st.header("MongoDB 配置", divider="blue")
 
 st.subheader("数据库连接")
 
+# 自动检测 Docker 环境
+import os
+def detect_mongodb_host():
+    """检测是否在 Docker 容器中运行，返回合适的 MongoDB 主机"""
+    # 检查 /.dockerenv 文件（Docker 容器标志）
+    if os.path.exists('/.dockerenv'):
+        return 'mongodb'
+    # 检查 cgroup 信息
+    try:
+        with open('/proc/self/cgroup', 'r') as f:
+            if 'docker' in f.read():
+                return 'mongodb'
+    except:
+        pass
+    # 默认使用 localhost
+    return 'localhost'
+
+# 检测运行环境
+mongo_host = detect_mongodb_host()
+default_mongo_uri = f"mongodb://{mongo_host}:27017/"
+
+if mongo_host == 'mongodb':
+    st.info("🐳 检测到 Docker 环境，使用容器间网络通信 (mongodb:27017)")
+else:
+    st.info("💻 检测到本地环境，使用 localhost 连接 (localhost:27017)")
+
 mongo_connection_string = st.text_input(
     "Connection String",
-    value="mongodb://localhost:27017/",
+    value=default_mongo_uri,
     placeholder="mongodb://localhost:27017/ or mongodb+srv://...",
     help="MongoDB 连接字符串",
     key="mongo_connection_string",
@@ -276,14 +302,41 @@ col1, col2 = st.columns(2)
 with col1:
     if st.button("🔗 测试连接"):
         try:
-            from pstds.storage.mongo_store import MongoStore
-            store = MongoStore(mongo_connection_string, mongo_database)
-            if store.client:
-                st.success("MongoDB 连接成功！")
-            else:
-                st.error("MongoDB 连接失败，请检查配置")
+            from pymongo import MongoClient
+            from pymongo.errors import ConnectionFailure, ConfigurationError, ServerSelectionTimeoutError
+
+            with st.spinner("正在测试 MongoDB 连接..."):
+                # 测试 MongoDB 协议连接
+                client = MongoClient(
+                    mongo_connection_string,
+                    serverSelectionTimeoutMS=5000,
+                    connectTimeoutMS=5000,
+                    socketTimeoutMS=5000,
+                    retryWrites=False,
+                    w='majority'
+                )
+
+                # 实际测试连接
+                result = client.admin.command('ping')
+                if result.get('ok') == 1.0:
+                    st.success("MongoDB 连接成功！")
+                    st.info(f"数据库: {mongo_database}")
+                else:
+                    st.error(f"MongoDB ping 失败: {result}")
+
+                client.close()
+
+        except ServerSelectionTimeoutError as e:
+            st.error(f"服务器选择超时 (请检查 MongoDB 服务是否运行): {e}")
+        except ConnectionFailure as e:
+            st.error(f"MongoDB 连接失败 (请检查地址和端口): {e}")
+        except ConfigurationError as e:
+            st.error(f"MongoDB 配置错误: {e}")
         except Exception as e:
-            st.error(f"连接错误: {e}")
+            st.error(f"未预期的错误: {type(e).__name__}: {e}")
+            import traceback
+            with st.expander("详细错误信息"):
+                st.code(traceback.format_exc())
 
 with col2:
     if st.button("🗑️ 清空本地缓存"):
@@ -302,7 +355,10 @@ with col1:
 
 with col2:
     st.metric("当前页面", "系统设置")
-    st.metric("Session ID", str(hash(st.session_state)[:8]))
+    # Generate session ID from current timestamp and random value
+    import time
+    session_id = str(hash(str(time.time()) + str(id(st.session_state))))[:8]
+    st.metric("Session ID", session_id)
 
 st.markdown("---")
 

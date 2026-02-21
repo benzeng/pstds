@@ -1,18 +1,21 @@
 {
-  "current_phase": 6,
-  "phase_name": "ÊÕÎ²·¢²¼",
+  "current_phase": 7,
+  "phase_name": "å®Œæˆ",
   "completed_phases": [
     0,
     1,
     2,
     3,
     4,
-    5
+    5,
+    6
   ],
   "phase_0_completed_at": "2026-02-21T14:35:53.942411",
   "phase_1_completed_at": "2026-02-21T14:52:51.898139",
   "phase_2_completed_at": "2026-02-21T14:58:49.880048",
   "phase_3_completed_at": "2026-02-21T15:11:58.803602",
   "phase_4_completed_at": "2026-02-21T15:20:49.593967",
-  "phase_5_completed_at": "2026-02-21T15:26:24.498960"
+  "phase_5_completed_at": "2026-02-21T15:26:24.498960",
+  "phase_6_completed_at": "2026-02-22T00:00:00.000000",
+  "v1_0_released_at": "2026-02-22T00:00:00.000000"
 }

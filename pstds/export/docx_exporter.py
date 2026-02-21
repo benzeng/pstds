@@ -149,8 +149,6 @@ class WordExporter:
         # 分割线
         paragraph = doc.add_paragraph()
         paragraph.add_run().add_break()
-        p = OxmlElement('w:pPr')
-        p.set(qnval('600000000'))
 
     def _add_performance_section(self, doc: Document, result: Dict[str, Any]):
         """添加绩效摘要部分"""
