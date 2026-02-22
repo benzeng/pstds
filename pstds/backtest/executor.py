@@ -1,7 +1,7 @@
 # pstds/backtest/executor.py
 # 信号执行器 - Phase 5 Task 3 (P5-T3)
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from datetime import date
 
 from pstds.backtest.portfolio import VirtualPortfolio, Trade

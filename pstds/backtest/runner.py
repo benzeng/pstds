@@ -62,6 +62,7 @@ class BacktestRunner:
         # 回测状态
         self.is_running = False
         self.current_date: Optional[date] = None
+        self._total_trading_days: int = 0  # 用于进度计算
 
         # 每日快照
         self.daily_snapshots: List[Dict] = []
@@ -111,10 +112,10 @@ class BacktestRunner:
         # 重置组合
         self.portfolio.reset()
         self.daily_snapshots = []
+        self._total_trading_days = len(trading_days)
 
-        # 每日价格数据（需要从数据源获取）
-        # 这里简化处理，实际实现需要从数据源获取
-        prices = self._get_mock_prices(symbol, trading_days)
+        # 预先获取整个回测期间的真实历史价格（BUG-003 修复）
+        prices = self._get_real_prices(symbol, trading_days, market_type)
 
         # 核心回测循环
         for i, trade_date in enumerate(trading_days):
@@ -249,41 +250,85 @@ class BacktestRunner:
 
         return result
 
-    def _get_mock_prices(self, symbol: str, dates: List[date]) -> Dict[date, float]:
+    def _get_real_prices(
+        self,
+        symbol: str,
+        dates: List[date],
+        market_type: str,
+    ) -> Dict[date, float]:
         """
-        获取模拟价格数据（简化实现）
+        从真实数据源获取历史收盘价格（BUG-003 修复）
 
-        实际实现应该从数据源获取历史价格数据。
+        在回测循环开始前预先批量获取整个回测期间的 OHLCV 数据，
+        避免每日逐条请求，同时确保价格数据完全基于真实历史数据。
+
+        使用 TemporalContext.for_live(last_date) 作为取数边界，
+        因为此处是合法的历史数据批量获取，不受 BACKTEST 实时 API 锁定约束。
 
         Args:
             symbol: 股票代码
-            dates: 日期列表
+            dates: 回测交易日列表
+            market_type: 市场类型
 
         Returns:
-            {日期: 价格} 字典
+            {交易日: 收盘价} 字典，无数据的日期不包含在字典中
         """
-        import random
-        prices = {}
-        base_price = 150.0
+        if not dates:
+            return {}
 
-        for i, d in enumerate(dates):
-            # 简单随机漫步
-            change = random.uniform(-0.02, 0.02)
-            base_price = base_price * (1 + change)
-            prices[d] = base_price
+        from pstds.data.router import DataRouter
 
-        return prices
+        start_date = dates[0]
+        end_date = dates[-1]
+
+        # 使用 LIVE 模式上下文（历史批量取数，不是实时流）
+        ctx = TemporalContext.for_live(end_date)
+
+        try:
+            router = DataRouter()
+            adapter = router.get_adapter(symbol, ctx=ctx)
+
+            df = adapter.get_ohlcv(
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date,
+                interval="1d",
+                ctx=ctx,
+            )
+
+            if df.empty:
+                print(f"警告: {symbol} 在 {start_date}~{end_date} 无价格数据，回测将跳过所有交易日")
+                return {}
+
+            # 将 DataFrame 转换为 {date: close_price} 字典
+            prices: Dict[date, float] = {}
+            for _, row in df.iterrows():
+                row_date = row["date"]
+                # date 列可能是 Timestamp（带或不带时区）
+                if hasattr(row_date, "date"):
+                    row_date = row_date.date()
+                close = float(row["close"]) if pd.notna(row.get("close")) else None
+                if close is not None and close > 0:
+                    prices[row_date] = close
+
+            print(f"已加载 {symbol} 真实价格数据：{len(prices)} 个交易日")
+            return prices
+
+        except Exception as e:
+            print(f"获取 {symbol} 真实价格失败: {e}，回测将跳过所有交易日")
+            return {}
 
     def get_progress(self) -> float:
         """
         获取回测进度
 
         Returns:
-            进度百分比（0-100）
+            进度百分比（0.0-100.0），回测未开始时返回 0.0
         """
-        if not self.current_date:
+        if not self.current_date or self._total_trading_days == 0:
             return 0.0
-        return 0.0  # 实际实现中应该计算真实进度
+        completed = len(self.daily_snapshots)
+        return round(completed / self._total_trading_days * 100.0, 1)
 
     def stop(self):
         """

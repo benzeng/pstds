@@ -53,11 +53,16 @@ class TestYFinanceAdapterOHLCV:
             assert list(result.columns) == expected_cols, f"Expected {expected_cols}, got {list(result.columns)}"
             assert result["data_source"].iloc[0] == "yfinance"
 
-    def test_yf002_get_ohlcv_filters_future_dates(self, yfinance_adapter, backtest_ctx_2024_01_02):
-        """YF-002: get_ohlcv 时间隔离：end_date 之后的数据被过滤"""
+    def test_yf002_get_ohlcv_filters_future_dates(self, yfinance_adapter, live_ctx_2024_01_02):
+        """YF-002: get_ohlcv 时间隔离：analysis_date 之后的数据行被过滤（BUG-001 修复验证）
+
+        使用 LIVE 模式上下文（analysis_date=2024-01-02），
+        yfinance 返回 5 天数据（2024-01-01 ~ 2024-01-05），
+        验证逐行过滤后只保留 <= 2024-01-02 的数据。
+        """
         with patch('yfinance.Ticker') as mock_ticker:
-            # Mock 返回数据（包含未来日期）
-            dates = pd.date_range('2024-01-01', periods=5)
+            # Mock 返回数据（包含 analysis_date 之后的行）
+            dates = pd.date_range('2024-01-01', periods=5, tz='UTC')
             mock_df = pd.DataFrame({
                 'Open': [180.0] * 5,
                 'High': [185.0] * 5,
@@ -69,13 +74,22 @@ class TestYFinanceAdapterOHLCV:
             mock_df.index.name = 'Date'
             mock_ticker.return_value.history.return_value = mock_df
 
-            # 这会调用 TemporalGuard.validate_timestamp
             result = yfinance_adapter.get_ohlcv(
-                "AAPL", date(2024, 1, 1), date(2024, 1, 2), "1d", backtest_ctx_2024_01_02
+                "AAPL", date(2024, 1, 1), date(2024, 1, 2), "1d", live_ctx_2024_01_02
             )
 
-            # 验证调用
-            mock_ticker.return_value.history.assert_called_once()
+            # BUG-001 修复：逐行过滤后只保留 <= analysis_date(2024-01-02) 的行
+            assert len(result) <= 2, f"应过滤掉 2024-01-02 之后的数据，实际返回 {len(result)} 行"
+            if len(result) > 0:
+                max_date = result["date"].dt.date.max()
+                assert max_date <= date(2024, 1, 2), f"最大日期 {max_date} 超出 analysis_date"
+
+    def test_yf002b_get_ohlcv_blocked_in_backtest(self, yfinance_adapter, backtest_ctx_2024_01_02):
+        """YF-002b: BACKTEST 模式下 get_ohlcv 抛出 RealtimeAPIBlockedError（BUG-006 修复验证）"""
+        with pytest.raises(RealtimeAPIBlockedError):
+            yfinance_adapter.get_ohlcv(
+                "AAPL", date(2024, 1, 1), date(2024, 1, 2), "1d", backtest_ctx_2024_01_02
+            )
 
 
 class TestYFinanceAdapterFundamentals:

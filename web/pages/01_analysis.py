@@ -38,18 +38,19 @@ st.markdown("---")
 st.header("步骤 1: 选择股票", divider="blue")
 
 # 检查是否从自选股页面跳转过来，并设置了选中的股票
-selected_stock = st.session_state.get("selected_stock")
+selected_stock = st.session_state.pop("selected_stock", None)
 if selected_stock:
-    # 首次从 watchlist 跳转过来时，设置 session state
-    if "analysis_symbol" not in st.session_state:
-        st.session_state["analysis_symbol"] = selected_stock["symbol"]
-        st.session_state["analysis_market_type"] = selected_stock["market_type"]
-    # 清除 session state 中的选中股票，避免影响下次使用
-    del st.session_state.selected_stock
+    # 从 watchlist 跳转时：始终覆盖，无论之前是否已有分析股票
+    st.session_state["analysis_symbol"] = selected_stock["symbol"]
+    st.session_state["analysis_market_type"] = selected_stock["market_type"]
+    # 同步更新 widget key 对应的 session state，强制输入框刷新显示新股票
+    # （带 key= 的 widget 优先读 st.session_state[key]，忽略 value= 参数）
+    st.session_state["symbol_input"] = selected_stock["symbol"]
+    st.session_state["market_type_input"] = selected_stock["market_type"]
 
-# 从 session state 获取上次的值，或使用默认值
-default_symbol = st.session_state.get("analysis_symbol", selected_stock["symbol"] if selected_stock else "AAPL")
-default_market_type = st.session_state.get("analysis_market_type", selected_stock["market_type"] if selected_stock else "US")
+# 从 session state 获取当前值（含跳转时已写入的新值）
+default_symbol = st.session_state.get("analysis_symbol", "AAPL")
+default_market_type = st.session_state.get("analysis_market_type", "US")
 
 symbol = st.text_input(
     "股票代码",

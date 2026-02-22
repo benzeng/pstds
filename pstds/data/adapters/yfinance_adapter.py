@@ -35,7 +35,10 @@ class YFinanceAdapter:
 
         内部调用 TemporalGuard.validate_timestamp(end_date, ctx)
         """
-        # 时间隔离校验
+        # BUG-006 修复：BACKTEST 模式下阻断实时 API 请求（事前阻断，不只是事后校验）
+        TemporalGuard.assert_backtest_safe(ctx, f"{self.name}.get_ohlcv")
+
+        # 时间隔离校验：对 end_date 本身做边界验证
         TemporalGuard.validate_timestamp(end_date, ctx, f"{self.name}.get_ohlcv")
 
         try:
@@ -71,9 +74,20 @@ class YFinanceAdapter:
             }
             df.columns = [column_map.get(col.lower(), col.lower()) for col in df.columns]
 
-            # 确保 date 列为 datetime
+            # 确保 date 列为 datetime（统一 UTC）
             if "date" in df.columns:
                 df["date"] = pd.to_datetime(df["date"], utc=True)
+
+            # BUG-001 修复：对 DataFrame 每行逐条过滤，防止 yfinance 返回超出
+            # end_date 的数据（盘后数据、end+Timedelta 导致的额外一天等）
+            if "date" in df.columns:
+                df = df[df["date"].dt.date <= ctx.analysis_date]
+
+            if df.empty:
+                return pd.DataFrame(columns=[
+                    "date", "open", "high", "low", "close",
+                    "volume", "adj_close", "data_source"
+                ])
 
             # 如果没有 adj_close，使用 close
             if "adj_close" not in df.columns and "close" in df.columns:
@@ -176,12 +190,15 @@ class YFinanceAdapter:
                 # yfinance 新闻相关性评分处理（简化为固定值，实际可根据内容计算）
                 relevance = 0.7  # 默认相关
 
+                # BUG-004 修复：统一使用 UTC 时区，避免时区转换导致的过滤失效
+                # tz=None 会产生 naive datetime，在北京时间环境下可能将 UTC 误判为本地时间
+                from datetime import timezone
                 news_items.append(NewsItem(
                     title=item.get("title", ""),
                     content=item.get("summary", "")[:500],  # 截断至 500 tokens
                     published_at=datetime.fromtimestamp(
                         item.get("providerPublishTime", 0),
-                        tz=None
+                        tz=timezone.utc   # 统一 UTC，消除时区歧义
                     ),
                     source=item.get("publisher", ""),
                     url=item.get("link", ""),

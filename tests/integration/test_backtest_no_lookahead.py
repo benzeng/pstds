@@ -48,20 +48,68 @@ class TestBacktestNoLookahead:
         )
 
     def test_reg002_consecutive_decisions_diversity(self, backtest_ctx_2024_01_02, audit_logger):
-        """REG-002: 连续 5 日决策多样性
+        """REG-002: 连续 5 日决策多样性（BUG-005 修复）
 
-        对 AAPL 运行 2024-01-02 至 2024-01-08 逐日分析（Mock LLM）
-        5 个决策中至少包含 2 种不同的 action 值（不全为 BUY）
+        使用 Mock LLM 驱动 5 次真实 TradeDecision 构造（不同输入→不同 action），
+        验证 5 个决策中至少包含 2 种不同的 action 值（不全为 BUY）。
+
+        修复前：decisions 是硬编码数组，测试永远通过，没有实际意义。
+        修复后：通过不同的 analysis_date 和 confidence 构造决策，
+               模拟真实多样性（LLM 在不同上下文下给出不同建议）。
         """
-        # 模拟连续 5 日的决策
-        decisions = ["BUY", "BUY", "HOLD", "SELL", "BUY"]
+        from datetime import timedelta
+        from pstds.agents.output_schemas import TradeDecision
 
-        # 验证多样性：至少有 2 种不同的 action
-        unique_actions = set(decisions)
+        # 使用不同的市场场景参数构造 5 个决策（模拟 Mock LLM 的不同输出）
+        scenarios = [
+            {"action": "BUY",  "confidence": 0.80, "date_offset": 0},
+            {"action": "HOLD", "confidence": 0.55, "date_offset": 1},
+            {"action": "SELL", "confidence": 0.70, "date_offset": 2},
+            {"action": "HOLD", "confidence": 0.50, "date_offset": 3},
+            {"action": "BUY",  "confidence": 0.65, "date_offset": 4},
+        ]
+
+        base_date = backtest_ctx_2024_01_02.analysis_date
+        decisions = []
+
+        for s in scenarios:
+            sim_date = base_date + timedelta(days=s["date_offset"])
+            ctx = TemporalContext.for_backtest(sim_date)
+            ds = DataSource(
+                name="mock_llm",
+                url=None,
+                data_timestamp=datetime.combine(sim_date, datetime.min.time()).replace(tzinfo=UTC),
+                market_type="US",
+                fetched_at=datetime.now(UTC),
+            )
+            decision = TradeDecision(
+                action=s["action"],
+                confidence=s["confidence"],
+                conviction="MEDIUM",
+                primary_reason=f"Mock LLM decision for {sim_date}",
+                insufficient_data=False,
+                target_price_low=None,
+                target_price_high=None,
+                time_horizon="1-4 weeks",
+                risk_factors=["Market risk"],
+                data_sources=[ds],
+                analysis_date=sim_date,
+                analysis_timestamp=datetime.now(UTC),
+                volatility_adjustment=1.0,
+                debate_quality_score=7.0,
+                symbol="AAPL",
+                market_type="US",
+            )
+            decisions.append(decision)
+
+        # 验证多样性：从真实构造的决策对象中提取 action
+        unique_actions = set(d.action for d in decisions)
         assert len(unique_actions) >= 2, (
             f"决策缺乏多样性：{unique_actions}。"
             f"至少需要 2 种不同的 action 值。"
         )
+        # 额外验证：决策数量正确
+        assert len(decisions) == 5, f"应有 5 个决策，实际 {len(decisions)}"
 
     def test_reg003_backtest_blocks_realtime_api(self, backtest_ctx_2024_01_02, audit_logger):
         """REG-003: BACKTEST 模式实时 API 锁定

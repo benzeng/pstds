@@ -67,12 +67,80 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
 
         节点插入顺序：
         data_quality_guard_node → 原版节点 → debate_referee_node → result_persistence_node
+
+        注意：debate_referee 实际在 propagate() 中手动调用（L124），
+        不是作为 LangGraph 图节点运行。此处仅调用父类构建原版图。
         """
         # 调用父类的 _build_graph（获取原版图）
         super()._build_graph()
 
-        # 注意：在原版架构中，节点是通过 LangGraph 构建的
-        # 这里我们只是记录扩展功能的接口，实际的图集成需要更深入的修改
+    def _inject_ctx_to_agents(self, ctx: TemporalContext) -> None:
+        """
+        通过 monkey-patch 将 TemporalContext 注入原版 Agent 数据获取层
+
+        在 super().propagate() 调用前执行，将各工具模块的 route_to_vendor
+        替换为带时间边界守卫的版本，确保所有数据请求不超过 analysis_date。
+
+        对应 ISD v1.0 Section 5 约束 C-02。
+
+        Args:
+            ctx: 时间上下文
+        """
+        import tradingagents.agents.utils.core_stock_tools as _m_core
+        import tradingagents.agents.utils.technical_indicators_tools as _m_tech
+        import tradingagents.agents.utils.fundamental_data_tools as _m_fund
+        import tradingagents.agents.utils.news_data_tools as _m_news
+
+        from tradingagents.dataflows.interface import route_to_vendor as _original_route
+
+        analysis_date_str = ctx.analysis_date.strftime("%Y-%m-%d")
+
+        # 各方法中日期参数在 positional args 中的索引（route_to_vendor(method, *args) 中的 args）
+        # 值为 (args_index, param_type)
+        # end_date / curr_date 超过 analysis_date 时截断，不抛异常，保证 Agent 正常运行
+        DATE_CAP_POSITIONS = {
+            "get_stock_data": 2,       # (symbol, start_date, END_DATE)
+            "get_indicators": 2,       # (symbol, indicator, CURR_DATE, look_back_days)
+            "get_fundamentals": 1,     # (ticker, CURR_DATE)
+            "get_balance_sheet": 2,    # (ticker, freq, CURR_DATE)
+            "get_cashflow": 2,         # (ticker, freq, CURR_DATE)
+            "get_income_statement": 2, # (ticker, freq, CURR_DATE)
+            "get_news": 2,             # (ticker, start_date, END_DATE)
+            "get_global_news": 0,      # (CURR_DATE, look_back_days, limit)
+            # get_insider_transactions(ticker) 无日期参数，无需处理
+        }
+
+        def _guarded_route(method, *args, **kwargs):
+            """带时间隔离守卫的 route_to_vendor 包装器"""
+            args = list(args)
+            if method in DATE_CAP_POSITIONS:
+                idx = DATE_CAP_POSITIONS[method]
+                if idx < len(args) and args[idx] is not None:
+                    date_arg = str(args[idx])
+                    if date_arg > analysis_date_str:
+                        # 时间越界：截断到 analysis_date，防止前视偏差
+                        args[idx] = analysis_date_str
+            return _original_route(method, *args, **kwargs)
+
+        # 保存原始函数引用并注入守卫版本
+        self._patched_modules = [_m_core, _m_tech, _m_fund, _m_news]
+        self._original_routes = {}
+        for mod in self._patched_modules:
+            self._original_routes[mod] = mod.route_to_vendor
+            mod.route_to_vendor = _guarded_route
+
+    def _restore_original_agents(self) -> None:
+        """
+        恢复原版 Agent 数据获取层（monkey-patch 反向还原）
+
+        必须在 finally 块中调用，确保即使 propagate 抛异常也能恢复。
+        """
+        if hasattr(self, "_patched_modules") and hasattr(self, "_original_routes"):
+            for mod in self._patched_modules:
+                if mod in self._original_routes:
+                    mod.route_to_vendor = self._original_routes[mod]
+            self._patched_modules = []
+            self._original_routes = {}
 
     def propagate(
         self,
@@ -102,7 +170,10 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
         # 存储时间上下文
         self.ctx = ctx
 
-        # 调用父类的 propagate 方法
+        # BUG-002 修复：注入 TemporalContext 到原版 Agent 数据获取层
+        self._inject_ctx_to_agents(ctx)
+
+        # 调用父类的 propagate 方法（在 finally 中确保恢复原版函数）
         try:
             # 原版 propagate 返回 (final_state, signal)
             final_state, signal = super().propagate(
@@ -115,6 +186,9 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
             return self._create_insufficient_data_decision(
                 symbol, ctx, error=str(e)
             )
+        finally:
+            # 无论成功还是失败，始终恢复原版 route_to_vendor
+            self._restore_original_agents()
 
         # 转换为 TradeDecision
         trade_decision = self._convert_to_trade_decision(
@@ -247,7 +321,10 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
     ) -> List[DataSource]:
         """创建数据来源列表"""
         data_sources = []
-        data_timestamp = datetime.now(UTC)
+        # BUG-007 修复：data_timestamp 应为数据对应的市场时间（analysis_date），
+        # 而非获取时间。fetched_at 才记录实际获取时间。
+        market_time = datetime.combine(ctx.analysis_date, datetime.min.time()).replace(tzinfo=UTC)
+        fetched_at = datetime.now(UTC)
 
         # 检查是否有数据源信息
         for source in ["market_report", "news_report", "fundamentals_report"]:
@@ -255,9 +332,9 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
                 ds = DataSource(
                     name=source,
                     url=None,
-                    data_timestamp=data_timestamp,
+                    data_timestamp=market_time,  # 数据对应的市场时间
                     market_type="US",  # 简化处理
-                    fetched_at=data_timestamp,
+                    fetched_at=fetched_at,        # 实际获取时间
                 )
                 data_sources.append(ds)
 
