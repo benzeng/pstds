@@ -101,6 +101,8 @@ class TemporalGuard:
             通过时间校验的 NewsItem 列表（原列表的子集）
         """
         compliant_news = []
+        # 提升到循环外，避免每条新闻重复实例化
+        logger = AuditLogger()
 
         for news in news_list:
             news_date = news.published_at.date() if isinstance(news.published_at, datetime) else news.published_at
@@ -109,7 +111,6 @@ class TemporalGuard:
                 compliant_news.append(news)
             else:
                 # 记录被过滤的新闻
-                logger = AuditLogger()
                 logger.log(
                     AuditRecord(
                         timestamp=datetime.now(UTC),
@@ -126,7 +127,6 @@ class TemporalGuard:
         # 记录过滤总数
         filtered_count = len(news_list) - len(compliant_news)
         if filtered_count > 0:
-            logger = AuditLogger()
             logger.log(
                 AuditRecord(
                     timestamp=datetime.now(UTC),

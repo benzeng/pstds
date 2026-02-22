@@ -70,12 +70,24 @@ class Config:
         """
         获取 API key
 
+        优先级：环境变量 > config/user.yaml > config/default.yaml
+
+        环境变量命名规则：{SERVICE_NAME}_API_KEY（大写，连字符转下划线）
+        示例：alpha_vantage → ALPHA_VANTAGE_API_KEY
+
         Args:
             service: 服务名称（openai, anthropic, alpha_vantage 等）
 
         Returns:
             API key 或 None
         """
+        # 1. 优先从环境变量读取（避免 key 写入配置文件）
+        env_var = f"{service.upper().replace('-', '_')}_API_KEY"
+        env_val = os.environ.get(env_var)
+        if env_val:
+            return env_val
+
+        # 2. 回退到配置文件
         key_path = f"api_keys.{service}"
         return self.get(key_path)
 

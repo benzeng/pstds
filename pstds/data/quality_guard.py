@@ -5,7 +5,7 @@ import pandas as pd
 from typing import List, Dict, Any, Optional
 from datetime import date, datetime
 
-from pstds.fallback import DataQualityReport
+from pstds.data.fallback import DataQualityReport
 from pstds.data.models import NewsItem
 from pstds.temporal.context import TemporalContext
 
@@ -30,25 +30,28 @@ class DataQualityGuard:
         """
         验证行情数据质量
 
+        每次调用使用新 DataQualityReport 实例，避免跨调用状态污染。
         检查规则：
         1. 时序连续性（交易日无缺口）- 缺口 ≤ 3 个交易日
         2. 价格合理性（非负，无极端异常）- 涨跌幅 ≤ 30%（A股限制）
         """
+        report = DataQualityReport()
+
         if df.empty:
-            self.report.score = 0
-            self.report.add_missing_field("ohlcv_data")
-            return self.report
+            report.score = 0
+            report.add_missing_field("ohlcv_data")
+            return report
 
         # 检查价格非负
         for col in ["open", "high", "low", "close", "adj_close"]:
             if col in df.columns:
                 if (df[col] <= 0).any():
-                    self.report.add_anomaly(f"{symbol}: {col} 存在非正值")
+                    report.add_anomaly(f"{symbol}: {col} 存在非正值")
 
         # 检查价格合理性（high >= low）
         if "high" in df.columns and "low" in df.columns:
             if (df["high"] < df["low"]).any():
-                self.report.add_anomaly(f"{symbol}: high < low 异常")
+                report.add_anomaly(f"{symbol}: high < low 异常")
 
         # 检查涨跌幅（简化处理）
         if "close" in df.columns:
@@ -59,7 +62,7 @@ class DataQualityGuard:
             extreme_changes = pct_change.abs() > 0.30
             if extreme_changes.any():
                 extreme_dates = df_sorted.loc[extreme_changes, "date"].dt.strftime("%Y-%m-%d").tolist()
-                self.report.add_anomaly(f"{symbol}: 极端涨跌幅 {extreme_dates}")
+                report.add_anomaly(f"{symbol}: 极端涨跌幅 {extreme_dates}")
 
         # 检查时序连续性（简化：检查日期间隔）
         if "date" in df.columns:
@@ -70,9 +73,9 @@ class DataQualityGuard:
             # 超过 3 天的间隔视为缺口（跳过周末）
             large_gaps = df_sorted[df_sorted["date_diff"] > pd.Timedelta(days=5)]
             if len(large_gaps) > 3:
-                self.report.add_anomaly(f"{symbol}: 时序存在较多缺口 ({len(large_gaps)} 处)")
+                report.add_anomaly(f"{symbol}: 时序存在较多缺口 ({len(large_gaps)} 处)")
 
-        return self.report
+        return report
 
     def validate_fundamentals(
         self,
@@ -82,15 +85,17 @@ class DataQualityGuard:
         """
         验证财报数据质量
 
+        每次调用使用新 DataQualityReport 实例，避免跨调用状态污染。
         检查规则：必需字段完整性（PE/PB/ROE 全部存在）
         """
+        report = DataQualityReport()
         required_fields = ["pe_ratio", "pb_ratio", "roe"]
 
         for field in required_fields:
             if field not in fundamentals or fundamentals[field] is None:
-                self.report.add_missing_field(f"fundamentals.{field}")
+                report.add_missing_field(f"fundamentals.{field}")
 
-        return self.report
+        return report
 
     def validate_news(
         self,
@@ -100,10 +105,12 @@ class DataQualityGuard:
         """
         验证新闻数据质量
 
+        每次调用使用新 DataQualityReport 实例，避免跨调用状态污染。
         检查规则：
         1. 时间戳合规：published_at <= analysis_date
         2. 计算被过滤的新闻数量
         """
+        report = DataQualityReport()
         analysis_date = ctx.analysis_date
         filtered_count = 0
 
@@ -113,9 +120,9 @@ class DataQualityGuard:
             if news_date > analysis_date:
                 filtered_count += 1
 
-        self.report.set_filtered_news_count(filtered_count)
+        report.set_filtered_news_count(filtered_count)
 
-        return self.report
+        return report
 
     def get_report(self) -> DataQualityReport:
         """获取数据质量报告"""

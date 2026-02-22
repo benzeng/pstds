@@ -1,6 +1,7 @@
 # pstds/agents/extended_graph.py
 # 扩展 TradingAgentsGraph - Phase 3 Task 3
 
+import threading
 from typing import Dict, List, Optional, Any
 from datetime import date, datetime, UTC
 from pydantic import ValidationError
@@ -15,6 +16,8 @@ from pstds.llm.cost_estimator import CostEstimator
 
 
 class ExtendedTradingAgentsGraph(TradingAgentsGraph):
+    # 类级别锁，保护 monkey-patch 操作的线程安全
+    _patch_lock = threading.Lock()
     """
     扩展 TradingAgentsGraph
 
@@ -81,11 +84,14 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
         在 super().propagate() 调用前执行，将各工具模块的 route_to_vendor
         替换为带时间边界守卫的版本，确保所有数据请求不超过 analysis_date。
 
-        对应 ISD v1.0 Section 5 约束 C-02。
+        对应 ISD v1.0 Section 5 约束 C-02。使用 _patch_lock 保证线程安全。
 
         Args:
             ctx: 时间上下文
         """
+        # 获取类级别锁，确保 monkey-patch 过程线程安全
+        ExtendedTradingAgentsGraph._patch_lock.acquire()
+
         import tradingagents.agents.utils.core_stock_tools as _m_core
         import tradingagents.agents.utils.technical_indicators_tools as _m_tech
         import tradingagents.agents.utils.fundamental_data_tools as _m_fund
@@ -134,13 +140,17 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
         恢复原版 Agent 数据获取层（monkey-patch 反向还原）
 
         必须在 finally 块中调用，确保即使 propagate 抛异常也能恢复。
+        释放 _patch_lock，与 _inject_ctx_to_agents 中的 acquire 配对。
         """
-        if hasattr(self, "_patched_modules") and hasattr(self, "_original_routes"):
-            for mod in self._patched_modules:
-                if mod in self._original_routes:
-                    mod.route_to_vendor = self._original_routes[mod]
-            self._patched_modules = []
-            self._original_routes = {}
+        try:
+            if hasattr(self, "_patched_modules") and hasattr(self, "_original_routes"):
+                for mod in self._patched_modules:
+                    if mod in self._original_routes:
+                        mod.route_to_vendor = self._original_routes[mod]
+                self._patched_modules = []
+                self._original_routes = {}
+        finally:
+            ExtendedTradingAgentsGraph._patch_lock.release()
 
     def propagate(
         self,
@@ -404,7 +414,7 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
 
     def validate_output_with_retry(
         self,
-        llm_output: str,
+        llm_output_or_fn,
         symbol: str,
         ctx: TemporalContext,
     ) -> TradeDecision:
@@ -412,7 +422,8 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
         带 Pydantic 校验的输出验证（最多重试 3 次）
 
         Args:
-            llm_output: LLM 输出的 JSON 字符串
+            llm_output_or_fn: LLM 输出字符串，或返回新输出的可调用对象。
+                              传入 callable 时，每次重试调用它获取新的 LLM 输出。
             symbol: 股票代码
             ctx: 时间上下文
 
@@ -425,6 +436,9 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
 
         while self.output_validation_retries < self.max_output_retries:
             try:
+                # 支持 callable（每次重试获取新输出）和固定字符串
+                llm_output = llm_output_or_fn() if callable(llm_output_or_fn) else llm_output_or_fn
+
                 # 尝试解析 JSON
                 data = json.loads(llm_output)
 
@@ -455,10 +469,6 @@ class ExtendedTradingAgentsGraph(TradingAgentsGraph):
             except (json.JSONDecodeError, ValidationError) as e:
                 self.output_validation_retries += 1
                 print(f"Output validation attempt {self.output_validation_retries} failed: {e}")
-
-                if self.output_validation_retries < self.max_output_retries:
-                    # 下一次尝试的提示词
-                    print(f"Retrying... ({self.output_validation_retries}/{self.max_output_retries})")
 
         # 所有尝试都失败，返回 INSUFFICIENT_DATA
         return self._create_insufficient_data_decision(

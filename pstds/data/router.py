@@ -26,8 +26,8 @@ class MarketRouter:
     - 美股: 1-5位字母
     """
 
-    # A股首2位代码范围
-    CN_A_PREFIXES = {"60", "00", "30", "68", "83", "43"}
+    # A股首2位代码范围（含北交所 92 前缀）
+    CN_A_PREFIXES = {"60", "00", "30", "68", "83", "43", "92"}
 
     @staticmethod
     def route(symbol: str) -> MarketType:
@@ -81,7 +81,7 @@ class DataRouter:
         from pstds.data.adapters.yfinance_adapter import YFinanceAdapter
         from pstds.data.adapters.akshare_adapter import AKShareAdapter
         from pstds.data.adapters.local_csv_adapter import LocalCSVAdapter
-        from pstds.fallback import FallbackManager
+        from pstds.data.fallback import FallbackManager
 
         # 初始化适配器实例
         self.yfinance_adapter = YFinanceAdapter()
@@ -144,7 +144,7 @@ class DataRouter:
         Returns:
             FallbackManager 实例
         """
-        from pstds.fallback import FallbackManager
+        from pstds.data.fallback import FallbackManager
 
         market_type = self.get_market_type(symbol)
 

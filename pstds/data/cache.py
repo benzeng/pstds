@@ -136,10 +136,11 @@ class CacheManager:
         获取 OHLCV 缓存
 
         WHERE 条件包含 date <= ctx.analysis_date（时间隔离）
+        同时检查 fetched_at + ttl_hours 是否过期
         """
         with sqlite3.connect(self.db_path) as conn:
             query = """
-                SELECT symbol, date, open, high, low, close, volume, adj_close, data_source
+                SELECT symbol, date, open, high, low, close, volume, adj_close, data_source, fetched_at, ttl_hours
                 FROM ohlcv_cache
                 WHERE symbol = ?
                 AND date(date) >= ?
@@ -155,8 +156,14 @@ class CacheManager:
 
             # 检查过期
             if not df.empty:
+                # 取 fetched_at 最新的记录的 ttl 进行过期判断
+                latest_fetched = df["fetched_at"].max()
+                ttl = int(df.loc[df["fetched_at"] == latest_fetched, "ttl_hours"].iloc[0])
+                if self._is_expired(latest_fetched, ttl):
+                    return None
                 df["date"] = pd.to_datetime(df["date"])
-                return df
+                # 返回时去掉内部列
+                return df[["symbol", "date", "open", "high", "low", "close", "volume", "adj_close", "data_source"]]
 
         return None
 
@@ -197,7 +204,7 @@ class CacheManager:
         """
         追加写入 Parquet 文件
 
-        只追加不修改，确保回测数据不可篡改
+        只追加不修改，确保回测数据不可篡改（按 date 去重避免重复累积）
         """
         parquet_path = self.parquet_dir / f"{symbol}.parquet"
 
@@ -205,13 +212,17 @@ class CacheManager:
             if parquet_path.exists():
                 # 读取现有数据并追加
                 existing_df = pq.read_table(parquet_path).to_pandas()
-                df = pd.concat([existing_df, df], ignore_index=True)
+                combined = pd.concat([existing_df, df], ignore_index=True)
+                # 按 date 去重，保留最新记录（C-06 只追加不修改原始内容，但去重避免重复累积）
+                combined = combined.drop_duplicates(subset=["date"], keep="last")
+                df = combined
 
             # 写入 Parquet
             table = pa.Table.from_pandas(df)
             pq.write_table(table, parquet_path)
         except Exception as e:
-            print(f"Error appending to Parquet: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Error appending Parquet for {symbol}: {e}")
 
     def get_fundamentals(
         self,
@@ -398,19 +409,19 @@ class CacheManager:
             cursor = conn.cursor()
             total_cleared = 0
 
-            # 清理各表的过期数据
+            # 清理各表的过期数据（unit 为 'hours' 或 'days'）
             tables = [
-                ("ohlcv_cache", "fetched_at", "ttl_hours"),
-                ("fundamentals_cache", "fetched_at", "ttl_hours"),
-                ("news_cache", "fetched_at", "ttl_hours"),
-                ("technical_cache", "fetched_at", "ttl_hours"),
-                ("decision_hash_cache", "created_at", "ttl_days"),
+                ("ohlcv_cache",         "fetched_at", "ttl_hours", "hours"),
+                ("fundamentals_cache",  "fetched_at", "ttl_hours", "hours"),
+                ("news_cache",          "fetched_at", "ttl_hours", "hours"),
+                ("technical_cache",     "fetched_at", "ttl_hours", "hours"),
+                ("decision_hash_cache", "created_at", "ttl_days",  "days"),
             ]
 
-            for table, time_col, ttl_col in tables:
+            for table, time_col, ttl_col, unit in tables:
                 cursor.execute(f"""
                     DELETE FROM {table}
-                    WHERE datetime({time_col}) < datetime('now', '-' || {ttl_col} || ' hours')
+                    WHERE datetime({time_col}) < datetime('now', '-' || {ttl_col} || ' {unit}')
                 """)
                 total_cleared += cursor.rowcount
 

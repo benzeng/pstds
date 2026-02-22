@@ -4,6 +4,7 @@
 
 from typing import Dict, List, Optional
 from datetime import date, timedelta
+from collections import defaultdict, deque
 import pandas as pd
 import numpy as np
 
@@ -91,13 +92,11 @@ class PerformanceCalculator:
         else:
             calmar_ratio = 0.0
 
-        # 6. 胜率（需要交易历史）
-        # 这个需要额外的交易数据，这里返回占位值
-        win_rate = 0.0
+        # 6. 胜率（需要交易历史，通过 calculate_with_trades() 获取）
+        win_rate = None
 
-        # 7. 预测准确率（需要决策与实际对比）
-        # 这个需要额外的决策数据，这里返回占位值
-        prediction_accuracy = 0.0
+        # 7. 预测准确率（需要决策历史，通过 calculate_with_decisions() 获取）
+        prediction_accuracy = None
 
         # 如果有基准，计算相对指标
         alpha = 0.0
@@ -142,26 +141,27 @@ class PerformanceCalculator:
         # 首先计算基本指标
         metrics = self.calculate(nav_series, benchmark, self.risk_free_rate)
 
-        # 6. 胜率
+        # 6. 胜率（使用 FIFO 队列按时间顺序匹配买卖对，避免 O(n²) 的首次买入搜索）
         if trades:
             winning_trades = 0
             losing_trades = 0
-
-            for trade in trades:
-                # 判断交易是否盈利
-                # 简化判断：卖出价格 > 买入价格
-                if trade.get("action") == "sell":
-                    # 需要找到对应的买入记录
-                    buy_price = None
-                    for t in trades:
-                        if t.get("symbol") == trade.get("symbol") and t.get("action") == "buy":
-                            buy_price = t.get("price")
-                            break
-
-                    if buy_price and trade.get("price") > buy_price:
-                        winning_trades += 1
-                    elif buy_price:
-                        losing_trades += 1
+            # FIFO 队列：按时间顺序匹配买卖对
+            buy_queues = defaultdict(deque)
+            # 先按时间排序确保顺序正确
+            sorted_trades = sorted(trades, key=lambda t: t.get("date", ""))
+            for trade in sorted_trades:
+                symbol = trade.get("symbol", "")
+                action = trade.get("action", "").lower()
+                price = trade.get("price", 0.0)
+                if action in ("buy", "strong_buy"):
+                    buy_queues[symbol].append(price)
+                elif action in ("sell", "strong_sell"):
+                    if buy_queues[symbol]:
+                        buy_price = buy_queues[symbol].popleft()
+                        if price > buy_price:
+                            winning_trades += 1
+                        else:
+                            losing_trades += 1
 
             total_trades = winning_trades + losing_trades
             if total_trades > 0:
@@ -229,6 +229,16 @@ class PerformanceCalculator:
         Returns:
             格式化的字符串
         """
+        win_rate_str = (
+            f"胜率: {metrics['win_rate']:.2f}%"
+            if metrics.get('win_rate') is not None
+            else "胜率: N/A (需要交易数据)"
+        )
+        prediction_accuracy_str = (
+            f"预测准确率: {metrics['prediction_accuracy']:.2f}%"
+            if metrics.get('prediction_accuracy') is not None
+            else "预测准确率: N/A (需要决策数据)"
+        )
         lines = [
             "=== 绩效指标 ===",
             f"累计收益: {metrics['total_return']:.2f}%",
@@ -236,8 +246,8 @@ class PerformanceCalculator:
             f"最大回撤: {metrics['max_drawdown']:.2f}%",
             f"夏普比率: {metrics['sharpe_ratio']:.2f}",
             f"卡尔马比率: {metrics['calmar_ratio']:.2f}",
-            f"胜率: {metrics['win_rate']:.2f}%",
-            f"预测准确率: {metrics['prediction_accuracy']:.2f}%",
+            win_rate_str,
+            prediction_accuracy_str,
         ]
 
         return "\n".join(lines)

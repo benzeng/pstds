@@ -134,6 +134,57 @@ class SignalExecutor:
                     # 部分卖出
                     return self.portfolio.sell(symbol, shares_to_sell, current_price, trade_date)
 
+    def _execute_with_override_size(
+        self,
+        decision: TradeDecision,
+        current_price: float,
+        trade_date: date,
+        override_size: float,
+    ) -> Optional[Trade]:
+        """
+        使用覆盖仓位直接执行（不修改共享状态）
+
+        Args:
+            decision: 交易决策
+            current_price: 当前价格
+            trade_date: 交易日期
+            override_size: 覆盖仓位比例（-1.0 到 1.0）
+
+        Returns:
+            执行的交易记录，如果没有交易则返回 None
+        """
+        action = decision.action
+        position_size = override_size
+
+        if position_size == 0.0:
+            if action == "HOLD":
+                self.portfolio.update_price(decision.symbol, current_price)
+            return None
+
+        symbol = decision.symbol
+        total_value = self.portfolio.get_total_value()
+        target_amount = total_value * abs(position_size)
+        shares = target_amount / current_price
+        existing_position = self.portfolio.get_position(symbol)
+
+        if existing_position is None:
+            if position_size > 0:
+                return self.portfolio.buy(symbol, shares, current_price, trade_date)
+            return None
+        else:
+            current_shares = existing_position.shares
+            if position_size > 0:
+                shares_to_buy = shares - current_shares
+                if shares_to_buy > 0:
+                    return self.portfolio.buy(symbol, shares_to_buy, current_price, trade_date)
+                return None
+            else:
+                shares_to_sell = min(shares, current_shares)
+                if shares >= current_shares:
+                    return self.portfolio.sell(symbol, current_shares, current_price, trade_date)
+                else:
+                    return self.portfolio.sell(symbol, shares_to_sell, current_price, trade_date)
+
     def execute_with_confidence(
         self,
         decision: TradeDecision,
@@ -143,7 +194,7 @@ class SignalExecutor:
         """
         根据置信度调整执行交易决策
 
-        低置信度时降低仓位比例。
+        低置信度时降低仓位比例。不修改 self.position_sizes 共享状态（线程安全）。
 
         Args:
             decision: 交易决策
@@ -161,27 +212,16 @@ class SignalExecutor:
         # 中等置信度 (0.5 - 0.8): 仓位 × 0.8
         # 低置信度 (< 0.5): 仓位 × 0.5
         if confidence >= 0.8:
-            confidence_factor = 1.0
+            factor = 1.0
         elif confidence >= 0.5:
-            confidence_factor = 0.8
+            factor = 0.8
         else:
-            confidence_factor = 0.5
+            factor = 0.5
 
-        # 应用置信度调整
         base_size = self.position_sizes.get(action, 0.0)
-        adjusted_size = base_size * confidence_factor
+        adjusted_size = base_size * factor
 
-        # 更新临时仓位配置
-        original_size = self.position_sizes[action]
-        self.position_sizes[action] = adjusted_size
-
-        # 执行交易
-        trade = self.execute(decision, current_price, trade_date)
-
-        # 恢复原始仓位配置
-        self.position_sizes[action] = original_size
-
-        return trade
+        return self._execute_with_override_size(decision, current_price, trade_date, adjusted_size)
 
     def execute_with_volatility(
         self,
@@ -192,7 +232,7 @@ class SignalExecutor:
         """
         根据波动率调整执行交易决策
 
-        高波动时降低仓位，低波动时保持原仓位。
+        高波动时降低仓位，低波动时保持原仓位。不修改 self.position_sizes 共享状态（线程安全）。
 
         Args:
             decision: 交易决策
@@ -210,30 +250,16 @@ class SignalExecutor:
         # 正常波动 (volatility_adjustment == 1.0): 保持原仓位
         # 高波动 (volatility_adjustment > 1.0): 仓位 × 0.7
         if volatility_adjustment < 1.0:
-            volatility_factor = 1.2
+            factor = 1.2
         elif volatility_adjustment > 1.0:
-            volatility_factor = 0.7
+            factor = 0.7
         else:
-            volatility_factor = 1.0
+            factor = 1.0
 
-        # 应用波动率调整
         base_size = self.position_sizes.get(action, 0.0)
-        adjusted_size = base_size * volatility_factor
+        adjusted_size = max(-1.0, min(1.0, base_size * factor))
 
-        # 确保仓位在合理范围内
-        adjusted_size = max(-1.0, min(1.0, adjusted_size))
-
-        # 更新临时仓位配置
-        original_size = self.position_sizes[action]
-        self.position_sizes[action] = adjusted_size
-
-        # 执行交易
-        trade = self.execute(decision, current_price, trade_date)
-
-        # 恢复原始仓位配置
-        self.position_sizes[action] = original_size
-
-        return trade
+        return self._execute_with_override_size(decision, current_price, trade_date, adjusted_size)
 
     def close_all_positions(self, current_prices: Dict[str, float], trade_date: date) -> List[Trade]:
         """
