@@ -111,15 +111,15 @@ else:
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("➕ 加仓", type="primary", use_container_width=True):
+        if st.button("➕ 加仓", type="primary", width="stretch"):
             st.info("加仓功能（实际实现需要输入数量和价格）")
 
     with col2:
-        if st.button("➖ 减仓", use_container_width=True):
+        if st.button("➖ 减仓", width="stretch"):
             st.info("减仓功能（实际实现需要输入数量）")
 
     with col3:
-        if st.button("🔄 全部平仓", use_container_width=True):
+        if st.button("🔄 全部平仓", width="stretch"):
             st.warning("全部平仓功能（实际实现需要确认）")
 
     st.markdown("---")

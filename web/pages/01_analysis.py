@@ -239,7 +239,7 @@ st.header("步骤 7: 执行分析", divider="blue")
 if not selected_analysts:
     st.warning("请先选择至少一个分析师")
 else:
-    if st.button("🚀 开始分析", type="primary", use_container_width=True):
+    if st.button("🚀 开始分析", type="primary", width="stretch"):
         # 使用 session state 中的值（确保使用用户输入的值）
         symbol_to_analyze = st.session_state.get("analysis_symbol", symbol)
         market_type_to_analyze = st.session_state.get("analysis_market_type", market_type)
@@ -431,7 +431,7 @@ if st.session_state.get("show_result", False):
                     ma_periods=[5, 10, 20, 60],
                 )
                 if chart_fig:
-                    st.plotly_chart(chart_fig, use_container_width=True)
+                    st.plotly_chart(chart_fig, width="stretch")
         else:
             st.info("暂无图表数据")
 

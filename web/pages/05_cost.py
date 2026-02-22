@@ -105,7 +105,7 @@ cost_df = pd.DataFrame({
     "成本": costs,
 })
 
-st.line_chart(cost_df, x="日期", y="成本", use_container_width=True)
+st.line_chart(cost_df, x="日期", y="成本", width="stretch")
 
 st.markdown("---")
 
@@ -142,7 +142,7 @@ cost_records = [
     {"日期": "2024-01-18", "提供商": "DeepSeek", "模型": "deepseek-chat", "调用次数": 3, "Token": 12000, "成本": "$1.68"},
 ]
 
-st.dataframe(cost_records, use_container_width=True)
+st.dataframe(cost_records, width="stretch")
 
 st.markdown("---")
 

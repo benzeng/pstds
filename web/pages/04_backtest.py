@@ -132,7 +132,7 @@ can_start = (
     initial_capital > 0
 )
 
-if st.button("🚀 开始回测", type="primary", use_container_width=True, disabled=not can_start):
+if st.button("🚀 开始回测", type="primary", width="stretch", disabled=not can_start):
     st.session_state["backtest_running"] = True
     st.session_state["backtest_params"] = {
         "symbol": symbol,
@@ -252,7 +252,7 @@ if st.session_state.get("show_backtest_result", False):
         nav_df["Buy & Hold"] = buy_hold_nav
 
         # 绘制图表
-        st.line_chart(nav_df, x="日期", y=["净值", "Buy & Hold"], use_container_width=True)
+        st.line_chart(nav_df, x="日期", y=["净值", "Buy & Hold"], width="stretch")
 
         st.markdown("---")
 

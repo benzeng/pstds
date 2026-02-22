@@ -267,7 +267,7 @@ if stock_costs:
 
     st.dataframe(
         table_data,
-        use_container_width=True,
+        width="stretch",
     )
 
 st.markdown("---")

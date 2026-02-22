@@ -122,17 +122,17 @@ st.markdown("""
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    if st.button("📊 股票分析", use_container_width=True):
+    if st.button("📊 股票分析", width="stretch"):
         st.switch_page("pages/01_analysis.py")
 
 with col2:
-    if st.button("⭐ 自选股", use_container_width=True):
+    if st.button("⭐ 自选股", width="stretch"):
         st.switch_page("pages/02_watchlist.py")
 
 with col3:
-    if st.button("📜 历史记录", use_container_width=True):
+    if st.button("📜 历史记录", width="stretch"):
         st.switch_page("pages/03_history.py")
 
 with col4:
-    if st.button("⚙️ 系统设置", use_container_width=True):
+    if st.button("⚙️ 系统设置", width="stretch"):
         st.switch_page("pages/07_settings.py")
