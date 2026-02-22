@@ -86,7 +86,7 @@ class FallbackManager:
         self.fallback_adapters = fallback_adapters
         self.report = report or DataQualityReport()
 
-    async def get_ohlcv(
+    def get_ohlcv(
         self,
         symbol: str,
         start_date: date,
@@ -123,7 +123,7 @@ class FallbackManager:
         # 所有适配器都失败，返回空 DataFrame
         return None
 
-    async def get_fundamentals(
+    def get_fundamentals(
         self,
         symbol: str,
         as_of_date: date,
@@ -157,7 +157,7 @@ class FallbackManager:
         # 所有适配器都失败
         return None
 
-    async def get_news(
+    def get_news(
         self,
         symbol: str,
         days_back: int,

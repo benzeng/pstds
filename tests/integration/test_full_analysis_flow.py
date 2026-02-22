@@ -94,41 +94,36 @@ class TestFullAnalysisFlow:
 
     def test_int008_fallback_data_source_switching(self):
         from pstds.data.fallback import FallbackManager, DataQualityReport
-        import asyncio
-        
+
         # 创建模拟的 TemporalContext
         ctx = TemporalContext.for_live(date(2024, 1, 2))
-        
+
         # 创建模拟的主适配器（会失败）
         primary_mock = Mock()
         primary_mock.get_ohlcv = Mock(side_effect=Exception("Primary failed"))
-        
+
         # 创建模拟的备用适配器（会成功）
         import pandas as pd
         fallback_mock = Mock()
         fallback_mock.name = "local_csv"
         fallback_mock.get_ohlcv = Mock(return_value=pd.DataFrame({"close": [100.0]}))
-        
+
         report = DataQualityReport(score=80.0)
         manager = FallbackManager(
-            primary_adapters=[primary_mock], 
-            fallback_adapters=[fallback_mock], 
+            primary_adapters=[primary_mock],
+            fallback_adapters=[fallback_mock],
             report=report
         )
-        
-        # 运行异步方法来触发降级逻辑
-        async def run_test():
-            result = await manager.get_ohlcv(
-                symbol="AAPL",
-                start_date=date(2024, 1, 1),
-                end_date=date(2024, 1, 5),
-                interval="1d",
-                ctx=ctx
-            )
-            return result
-        
-        result = asyncio.run(run_test())
-        
+
+        # 运行同步方法来触发降级逻辑
+        result = manager.get_ohlcv(
+            symbol="AAPL",
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 5),
+            interval="1d",
+            ctx=ctx
+        )
+
         # 验证降级被触发
         assert len(manager.get_report().fallbacks_used) > 0
         assert "local_csv" in manager.get_report().fallbacks_used

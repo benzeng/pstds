@@ -59,3 +59,7 @@ services:
 volumes:
   mongo_data:
   redis_data:
+
+networks:
+  app-network:
+    driver: bridge

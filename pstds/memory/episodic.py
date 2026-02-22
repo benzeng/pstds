@@ -97,12 +97,13 @@ class EpisodicMemory:
 
         # 添加到 ChromaDB
         try:
+            record_id = f"{symbol}_{action}_{datetime.now(UTC).isoformat()}"
             self.collection.add(
                 documents=[document_text],
                 metadatas=[document_metadata],
-                ids=[f"{symbol}_{action}_{datetime.now(UTC).isoformat()}"]
+                ids=[record_id]
             )
-            return self.collection.last_insert_id
+            return record_id
         except Exception as e:
             print(f"Error adding to ChromaDB: {e}")
             return ""

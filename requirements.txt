@@ -47,3 +47,5 @@ typer>=0.12.0
 questionary>=2.0.0
 langchain_anthropic>=0.1.0
 langchain-google-genai>=1.0.0
+alpha-vantage>=3.0.0
+pandas-ta>=0.3.14b0
