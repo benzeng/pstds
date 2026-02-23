@@ -92,6 +92,72 @@ class TestFullAnalysisFlow:
         estimate = estimator.estimate(prompt="Test" * 100, model="gpt-4o")
         assert "estimated_tokens" in estimate and "estimated_cost_usd" in estimate
 
+    def test_news_filter_integration(self):
+        """INT-008/009: NewsFilter 集成测试
+
+        INT-008: NewsFilter 在 TemporalContext 下正确处理新闻列表
+        INT-009: NewsFilterStats 字段正确填充
+        """
+        from datetime import datetime
+        from pathlib import Path
+        import json
+
+        from pstds.data.models import NewsItem
+        from pstds.data.news_filter import NewsFilter, NewsFilterStats
+
+        ctx = TemporalContext.for_live(date(2024, 1, 2))
+        nf = NewsFilter(relevance_threshold=0.05, dedup_threshold=0.85)
+
+        # 构造包含过去、当天、未来新闻的混合列表
+        news_list = [
+            NewsItem(
+                title="AAPL Apple earnings strong Q4",
+                content="Apple reported strong earnings for Q4 beating all expectations",
+                published_at=datetime(2024, 1, 1, 10, 0, 0),
+                source="Reuters",
+                relevance_score=0.9,
+                market_type="US",
+                symbol="AAPL",
+            ),
+            NewsItem(
+                title="AAPL iPhone sales record",
+                content="Apple iPhone sales hit a new record for the quarter",
+                published_at=datetime(2024, 1, 2, 9, 0, 0),
+                source="Bloomberg",
+                relevance_score=0.85,
+                market_type="US",
+                symbol="AAPL",
+            ),
+            NewsItem(
+                title="Future AAPL outlook",
+                content="Apple future outlook looks bright",
+                published_at=datetime(2024, 1, 3, 10, 0, 0),  # 未来
+                source="CNBC",
+                relevance_score=0.7,
+                market_type="US",
+                symbol="AAPL",
+            ),
+        ]
+
+        # INT-008: 过滤正确运行
+        result, stats = nf.filter(news_list, "AAPL", ctx, company_name="Apple")
+
+        assert result is not None
+        assert isinstance(result, list)
+        # 未来新闻应被 L1 过滤
+        result_dates = [n.published_at.date() for n in result]
+        assert all(d <= date(2024, 1, 2) for d in result_dates), \
+            "过滤结果中不应有未来日期的新闻"
+
+        # INT-009: NewsFilterStats 字段正确填充
+        assert isinstance(stats, NewsFilterStats)
+        assert stats.raw_count == 3
+        assert stats.after_temporal == 2  # 未来那条被移除
+        assert stats.after_relevance <= stats.after_temporal
+        assert stats.after_dedup <= stats.after_relevance
+        assert stats.temporal_filtered == 1
+        assert stats.relevance_filtered >= 0
+
     def test_int008_fallback_data_source_switching(self):
         from pstds.data.fallback import FallbackManager, DataQualityReport
 

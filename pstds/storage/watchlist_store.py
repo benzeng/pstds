@@ -109,7 +109,7 @@ class WatchlistStore:
         market_type: str = "US",
         group_tags: Optional[List[str]] = None,
         auto_analysis_enabled: bool = True,
-    ) -> tuple[bool, str]:
+    ) -> bool:
         """
         添加股票到自选股
 
@@ -121,10 +121,10 @@ class WatchlistStore:
             auto_analysis_enabled: 是否启用自动分析
 
         Returns:
-            (是否添加成功, 消息)
+            是否添加成功
         """
         if self.watchlist_collection is None:
-            return False, "MongoDB 未连接，无法添加股票"
+            return False
 
         try:
             doc = {
@@ -140,19 +140,14 @@ class WatchlistStore:
 
             # 使用 insert_one 检查唯一性
             self.watchlist_collection.insert_one(doc)
-            return True, f"已添加: {symbol.upper()} - {name}"
+            return True
 
         except Exception as e:
             error_msg = str(e)
             if "duplicate key error" in error_msg or "E11000" in error_msg:
-                # 检查该股票是否已存在
-                existing = self.get_by_symbol(symbol.upper())
-                if existing:
-                    return False, f"⚠️ 股票 {symbol.upper()} 已存在（{existing['name']}）"
-                else:
-                    return False, f"❌ 添加股票失败：{error_msg}"
+                return False
             else:
-                return False, f"❌ 添加股票失败：{error_msg}"
+                return False
 
     def get_all(self, market_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -289,7 +284,7 @@ class WatchlistStore:
     def get_by_tags(
         self,
         tags: Optional[List[str]] = None,
-        require_match: bool = False
+        require_match: bool = True
     ) -> List[Dict[str, Any]]:
         """
         根据标签获取股票

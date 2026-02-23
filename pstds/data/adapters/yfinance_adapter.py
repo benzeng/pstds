@@ -191,7 +191,7 @@ class YFinanceAdapter:
                 relevance = 0.7  # 默认相关
 
                 # BUG-004 修复：统一使用 UTC 时区，避免时区转换导致的过滤失效
-                # tz=None 会产生 naive datetime，在北京时间环境下可能将 UTC 误判为本地时间
+                # 不带时区的 naive datetime 在北京时间环境下可能将 UTC 误判为本地时间
                 from datetime import timezone
                 news_items.append(NewsItem(
                     title=item.get("title", ""),

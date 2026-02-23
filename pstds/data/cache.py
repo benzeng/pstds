@@ -403,6 +403,16 @@ class CacheManager:
             ))
             conn.commit()
 
+    def close(self) -> None:
+        """关闭并释放数据库文件（Windows 文件锁定修复）"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.execute("PRAGMA journal_mode=DELETE")
+            conn.close()
+        except Exception:
+            pass
+
     def clear_expired(self) -> int:
         """清除过期缓存，返回清除的行数"""
         with sqlite3.connect(self.db_path) as conn:

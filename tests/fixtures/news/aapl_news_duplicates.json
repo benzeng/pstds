@@ -1,0 +1,42 @@
+[
+  {
+    "title": "Apple AAPL iPhone sales surge in Q4 2023",
+    "content": "Apple Inc reported record iPhone sales in Q4 2023, beating analyst expectations significantly. The company sold over 80 million units during the holiday season, driven by strong demand for iPhone 15 Pro models.",
+    "published_at": "2024-01-01T08:00:00Z",
+    "source": "Reuters",
+    "url": "https://reuters.com/1",
+    "relevance_score": 0.90,
+    "market_type": "US",
+    "symbol": "AAPL"
+  },
+  {
+    "title": "Apple AAPL iPhone sales surge in Q4 2023 beats expectations",
+    "content": "Apple Inc reported record iPhone sales in Q4 2023, beating analyst expectations significantly. The company sold over 80 million units during the holiday season, driven by strong demand for iPhone 15 Pro models.",
+    "published_at": "2024-01-01T10:00:00Z",
+    "source": "Bloomberg",
+    "url": "https://bloomberg.com/1",
+    "relevance_score": 0.88,
+    "market_type": "US",
+    "symbol": "AAPL"
+  },
+  {
+    "title": "Apple iPhone Q4 results: 80 million units sold",
+    "content": "Apple Inc reported record iPhone sales in Q4 2023, beating analyst expectations significantly. The company sold over 80 million units during the holiday season, driven by strong demand for iPhone 15 Pro models.",
+    "published_at": "2024-01-01T12:00:00Z",
+    "source": "CNBC",
+    "url": "https://cnbc.com/1",
+    "relevance_score": 0.85,
+    "market_type": "US",
+    "symbol": "AAPL"
+  },
+  {
+    "title": "AAPL stock reaches new 52-week high on earnings beat",
+    "content": "Apple stock climbed to a new 52-week high after the company reported earnings that beat analyst expectations across all segments. Revenue grew 8% year-over-year.",
+    "published_at": "2024-01-02T09:00:00Z",
+    "source": "MarketWatch",
+    "url": "https://marketwatch.com/1",
+    "relevance_score": 0.87,
+    "market_type": "US",
+    "symbol": "AAPL"
+  }
+]

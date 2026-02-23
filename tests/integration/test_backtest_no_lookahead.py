@@ -215,3 +215,125 @@ class TestBacktestNoLookahead:
             mock_openai.return_value = MagicMock()
             client = OpenAIClient("gpt-4o")  # 不传 temperature，应该是 0.0
             assert client is not None
+
+    def test_reg006_backtest_report_uses_only_historical_data(self, backtest_ctx_2024_01_02, audit_logger):
+        """REG-006: BacktestReportGenerator 仅使用历史数据
+
+        nav_series() 返回的所有日期必须 <= end_date，
+        确保报告生成器不引入前视偏差。
+        """
+        from pstds.backtest.report import BacktestReportGenerator
+
+        end_date_str = "2024-03-29"
+        mock_result = {
+            "symbol": "AAPL",
+            "start_date": "2024-01-02",
+            "end_date": end_date_str,
+            "initial_capital": 100000.0,
+            "final_nav": 108500.0,
+            "total_return": 0.085,
+            "annualized_return": 0.34,
+            "max_drawdown": -0.032,
+            "sharpe_ratio": 1.85,
+            "calmar_ratio": 2.1,
+            "win_rate": 0.62,
+            "prediction_accuracy": 0.58,
+            "trade_count": 23,
+            "trading_days_count": 62,
+        }
+
+        # 构造逐日记录（全部在 end_date 之内）
+        from datetime import timedelta
+        base = date(2024, 1, 2)
+        records = []
+        for i in range(62):
+            d = base + timedelta(days=i)
+            records.append({
+                "date": d.strftime("%Y-%m-%d"),
+                "action": "HOLD",
+                "confidence": 0.5,
+                "nav": 100000.0 + i * 100,
+            })
+
+        gen = BacktestReportGenerator(mock_result, records)
+        nav = gen.nav_series()
+
+        # REG-006: 所有净值日期必须 <= end_date
+        for date_str in nav.keys():
+            assert date_str <= end_date_str, (
+                f"REG-006 失败: nav_series 包含超过 end_date 的日期 {date_str}"
+            )
+
+        # 报告生成不应抛出异常
+        md = gen.to_markdown()
+        assert "AAPL" in md
+        assert "回测概况" in md
+
+    def test_reg007_news_filter_temporal_isolation(self, backtest_ctx_2024_01_02, audit_logger):
+        """REG-007: NewsFilter + TemporalGuard 联合隔离验证
+
+        BACKTEST 模式下，NewsFilter 不得让任何 published_at > analysis_date
+        的新闻通过，即使绕过 L1 直接调用 L2/L3 也不行。
+        此测试验证整个过滤链的时间隔离是有效的。
+        """
+        from datetime import datetime
+        from pstds.data.models import NewsItem
+        from pstds.data.news_filter import NewsFilter
+
+        ctx = backtest_ctx_2024_01_02  # analysis_date = 2024-01-02
+        nf = NewsFilter(relevance_threshold=0.0, dedup_threshold=1.0)  # 极宽松，只测试 L1
+
+        mixed_news = [
+            NewsItem(
+                title="AAPL past news Apple earnings strong",
+                content="Apple reported strong earnings for the quarter",
+                published_at=datetime(2024, 1, 1, 10, 0, 0),
+                source="Reuters",
+                relevance_score=0.9,
+                market_type="US",
+                symbol="AAPL",
+            ),
+            NewsItem(
+                title="AAPL same day news Apple iPhone",
+                content="Apple launched new iPhone model on analysis date",
+                published_at=datetime(2024, 1, 2, 9, 0, 0),
+                source="Bloomberg",
+                relevance_score=0.8,
+                market_type="US",
+                symbol="AAPL",
+            ),
+            NewsItem(
+                title="AAPL future news Apple forecast",
+                content="Apple future earnings forecast exceeds expectations",
+                published_at=datetime(2024, 1, 3, 10, 0, 0),  # 前视偏差
+                source="CNBC",
+                relevance_score=0.95,
+                market_type="US",
+                symbol="AAPL",
+            ),
+            NewsItem(
+                title="AAPL far future Apple plans",
+                content="Apple 2025 product plans revealed by insider",
+                published_at=datetime(2024, 1, 10, 10, 0, 0),  # 严重前视偏差
+                source="TechCrunch",
+                relevance_score=0.99,
+                market_type="US",
+                symbol="AAPL",
+            ),
+        ]
+
+        result, stats = nf.filter(mixed_news, "AAPL", ctx)
+
+        # REG-007: 不得有任何未来新闻通过
+        analysis_date = ctx.analysis_date
+        for news in result:
+            assert news.published_at.date() <= analysis_date, (
+                f"REG-007 失败: 前视偏差泄漏！"
+                f"新闻 '{news.title}' published_at={news.published_at.date()} "
+                f"> analysis_date={analysis_date}"
+            )
+
+        # 验证过滤效果：2条未来新闻应被移除
+        assert stats.raw_count == 4
+        assert stats.after_temporal == 2  # 只剩过去 + 当天的
+        assert stats.temporal_filtered == 2

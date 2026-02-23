@@ -1,288 +1,91 @@
-# Phase 0：环境搭建与验证
+# Phase 0：编码前验证
 
-**目标**：Docker 服务就绪，TradingAgents 原版可运行，项目骨架创建完成。
+**目标**：确认 v1.0 Code Review 的 9 项 Bug 修复全部生效，所有现有测试通过，再开始 v3.0 新功能开发。
 
-**前置条件**（由用户在运行 Claude Code 前手动完成）：
-```bash
-git clone https://github.com/TauricResearch/TradingAgents.git pstds
-cd pstds
-python -m venv .venv && source .venv/bin/activate
-```
+> ⚠️ **这是 v3.0 的起点。不要在现有测试失败的情况下添加任何新代码。**
 
 ---
 
 ## 任务列表
 
-**P0-T1：创建 docs/ 目录并转换设计文档**
+**P0-T1：激活环境并验证起点状态**
 ```bash
-mkdir -p docs
-# 将用户提供的 .docx 文件转换为 .md（便于 Claude Code 读取）
-for f in PSTDS_1_功能需求文档_FRD_v2.docx PSTDS_2_系统架构文档_SAD_v2.docx \
-          PSTDS_3_详细设计文档_DDD_v2.docx PSTDS_4_接口契约规范_ISD_v1.docx \
-          PSTDS_5_测试规范文档_TSD_v1.docx; do
-    [ -f "$f" ] && pandoc "$f" -o "docs/${f%.docx}.md" && echo "✓ $f"
-done
+cd /path/to/pstds
+source .venv/bin/activate
+
+# 运行全部现有测试
+pytest tests/ -v --tb=short
+
+# 期望结果：
+# TG-001~TG-012（TemporalGuard）✅
+# PM-001~PM-008（Pydantic 模型）✅
+# RT-001~RT-008（市场路由器）✅
+# YF-001~YF-005（YFinance 适配器）✅
+# AK-001~AK-005（AKShare 适配器）✅
+# INT-001~INT-007（集成测试）✅
+# REG-001~REG-005（前视偏差回归）✅
 ```
 
-**P0-T2：创建项目骨架目录**
+**P0-T2：验证 M1 修复（temporal_injection monkey-patch）**
 ```bash
-mkdir -p pstds/{temporal,agents,llm,backtest,memory,scheduler,storage,export,notify}
-mkdir -p pstds/data/adapters
-mkdir -p web/{pages,components}
-mkdir -p tests/{unit,adapters,integration}
-mkdir -p tests/fixtures/{ohlcv,fundamentals,news,llm_responses}
-mkdir -p data/{raw/{prices,news,fundamentals},cache,backtest,reports,logs}
-mkdir -p config
-# 创建所有 __init__.py
-find pstds tests -type d -exec touch {}/__init__.py \;
-```
-
-**P0-T3：创建 requirements.txt**
-```
-# 核心框架
-tradingagents>=0.2.0
-langchain>=0.2.0
-langgraph>=0.1.0
-
-# 数据
-yfinance>=0.2.40
-akshare>=1.14.0
-pandas>=2.0.0
-pandas-ta>=0.3.14b0
-pyarrow>=15.0.0
-requests>=2.31.0
-
-# LLM
-openai>=1.30.0
-anthropic>=0.28.0
-google-generativeai>=0.5.0
-
-# 数据验证
-pydantic>=2.7.0
-
-# 存储
-pymongo>=4.7.0
-
-# 向量记忆
-chromadb>=0.5.0
-
-# Web UI
-streamlit>=1.35.0
-plotly>=5.22.0
-
-# 调度
-apscheduler>=3.10.0
-
-# 导出
-python-docx>=1.1.0
-weasyprint>=62.0
-markdown>=3.6
-
-# 通知
-plyer>=2.1.0
-
-# 测试
-pytest>=8.2.0
-pytest-cov>=5.0.0
-pytest-mock>=3.14.0
-pytest-asyncio>=0.23.0
-
-# 工具
-python-dotenv>=1.0.0
-pyyaml>=6.0.1
-cryptography>=42.0.0
-```
-
-**P0-T4：创建 config/default.yaml**
-```yaml
-# PSTDS v2.0 默认配置
-temporal:
-  enforce_isolation: true
-  audit_log_path: "./data/logs/temporal_audit.jsonl"
-  news_timestamp_strict: true
-
-llm:
-  provider: "ollama"
-  deep_think_model: "qwen3:4b"
-  quick_think_model: "qwen3:4b"
-  temperature: 0.0            # 仅文档记录，实际调用硬编码为 0.0
-  max_debate_rounds: 2
-  ollama_base_url: "http://localhost:11434"
-  token_budget:
-    L0: 5000
-    L1: 20000
-    L2: 60000
-    L3: 120000
-  monthly_cost_alert_usd: 10.0
-  auto_fallback_to_local: true
-
-analysis:
-  default_depth: "L2"
-  risk_profile: "balanced"
-  enable_volatility_adjustment: true
-  analysts: ["technical", "fundamentals", "news", "sentiment"]
-  debate_referee_enabled: true
-  min_debate_quality_score: 5.0
-  consecutive_buy_alert: 3
-
-data:
-  us_stock_primary: "yfinance"
-  us_stock_fallback: "alpha_vantage"
-  cn_a_stock_primary: "akshare"
-  hk_stock_primary: "akshare"
-  hk_stock_fallback: "yfinance"
-  cache_ttl_hours: 24
-  news_ttl_hours: 6
-  news_relevance_threshold: 0.6
-  max_news_tokens_per_item: 500
-  max_fundamentals_tokens: 2000
-
-storage:
-  mongodb_uri: "mongodb://localhost:27017"
-  mongodb_db: "pstds"
-  sqlite_path: "./data/cache.db"
-  parquet_dir: "./data/raw"
-  reports_dir: "./data/reports"
-  chromadb_path: "./data/vector_memory"
-
-concurrency:
-  max_parallel_stocks: 3
-  rate_limit_rps: 5
-
-notify:
-  desktop_enabled: true
-  email_enabled: false
-  smtp_host: ""
-  smtp_port: 587
-  smtp_user: ""
-  smtp_to: ""
-```
-
-**P0-T5：创建 docker-compose.yml**
-```yaml
-version: "3.9"
-services:
-  mongodb:
-    image: mongo:7.0
-    ports: ["27017:27017"]
-    volumes: ["mongo_data:/data/db"]
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  ollama:
-    image: ollama/ollama:latest
-    ports: ["11434:11434"]
-    volumes: ["ollama_data:/root/.ollama"]
-    profiles: ["local-llm"]   # 仅在 --profile local-llm 时启动
-
-volumes:
-  mongo_data:
-  ollama_data:
-```
-
-**P0-T6：创建 tests/conftest.py**
-```python
-# tests/conftest.py
-import pytest
-import json
+# 验证 TemporalContext 注入机制存在且正常工作
+python -c "
+from pstds.agents.temporal_injection import inject_temporal_context, restore_original_router
+import tradingagents.dataflows.interface as iface
+from pstds.temporal.context import TemporalContext
 from datetime import date
-from pathlib import Path
 
-FIXTURES = Path(__file__).parent / "fixtures"
+original = iface.route_to_vendor
+ctx = TemporalContext.for_backtest(date(2024, 1, 2))
 
-@pytest.fixture
-def live_ctx_2024_01_02():
-    """AAPL 前视偏差回归测试标准上下文"""
-    from pstds.temporal.context import TemporalContext
-    return TemporalContext.for_live(date(2024, 1, 2))
+inject_temporal_context(ctx)
+assert iface.route_to_vendor is not original, '❌ BUG-002 未修复：注入失败'
+print('✓ temporal_injection 注入正常')
 
-@pytest.fixture
-def backtest_ctx_2024_01_02():
-    from pstds.temporal.context import TemporalContext
-    return TemporalContext.for_backtest(date(2024, 1, 2))
-
-@pytest.fixture
-def live_ctx_today():
-    from pstds.temporal.context import TemporalContext
-    from datetime import date
-    return TemporalContext.for_live(date.today())
-
-@pytest.fixture
-def mixed_news_fixture():
-    """含未来新闻的测试数据：5条合规 + 3条未来"""
-    return json.loads((FIXTURES / "news/mixed_dates.json").read_text())
-
-@pytest.fixture
-def valid_decision_json():
-    return json.loads((FIXTURES / "llm_responses/valid_trade_decision.json").read_text())
+restore_original_router()
+assert iface.route_to_vendor is original, '❌ BUG-002 修复有问题：恢复失败'
+print('✓ temporal_injection 恢复正常')
+"
 ```
 
-**P0-T7：创建 Fixture 数据文件**
-
-创建 `tests/fixtures/news/mixed_dates.json`：
-```json
-[
-  {"title": "AAPL reports strong Q4", "content": "Apple reported...", "published_at": "2024-01-01T10:00:00Z", "source": "Reuters", "url": "https://reuters.com/1", "relevance_score": 0.85, "market_type": "US", "symbol": "AAPL"},
-  {"title": "Fed signals rate pause", "content": "Federal Reserve...", "published_at": "2024-01-01T14:00:00Z", "source": "Bloomberg", "url": "https://bloomberg.com/1", "relevance_score": 0.72, "market_type": "US", "symbol": "AAPL"},
-  {"title": "Tech sector rally", "content": "Technology stocks...", "published_at": "2024-01-02T08:00:00Z", "source": "CNBC", "url": "https://cnbc.com/1", "relevance_score": 0.68, "market_type": "US", "symbol": "AAPL"},
-  {"title": "AAPL new product launch", "content": "Apple announced...", "published_at": "2024-01-02T09:30:00Z", "source": "TechCrunch", "url": "https://techcrunch.com/1", "relevance_score": 0.91, "market_type": "US", "symbol": "AAPL"},
-  {"title": "Market opens higher", "content": "Stocks opened...", "published_at": "2024-01-02T09:31:00Z", "source": "WSJ", "url": "https://wsj.com/1", "relevance_score": 0.65, "market_type": "US", "symbol": "AAPL"},
-  {"title": "FUTURE: AAPL earnings beat", "content": "Apple exceeded...", "published_at": "2024-01-03T10:00:00Z", "source": "Reuters", "url": "https://reuters.com/2", "relevance_score": 0.88, "market_type": "US", "symbol": "AAPL"},
-  {"title": "FUTURE: Fed cuts rates", "content": "Federal Reserve cut...", "published_at": "2024-01-04T15:00:00Z", "source": "Bloomberg", "url": "https://bloomberg.com/2", "relevance_score": 0.79, "market_type": "US", "symbol": "AAPL"},
-  {"title": "FUTURE: AAPL all-time high", "content": "Apple stock hit...", "published_at": "2024-01-05T16:00:00Z", "source": "CNBC", "url": "https://cnbc.com/2", "relevance_score": 0.95, "market_type": "US", "symbol": "AAPL"}
-]
-```
-
-创建 `tests/fixtures/llm_responses/valid_trade_decision.json`：
-```json
-{
-  "action": "BUY",
-  "confidence": 0.72,
-  "conviction": "MEDIUM",
-  "primary_reason": "强劲的技术面突破结合积极的基本面数据支撑买入决策",
-  "target_price_low": 182.0,
-  "target_price_high": 195.0,
-  "time_horizon": "2-4 weeks",
-  "risk_factors": ["宏观经济不确定性", "估值偏高风险", "竞争加剧"],
-  "data_sources": [
-    {"name": "yfinance", "url": null, "data_timestamp": "2024-01-02T00:00:00Z", "market_type": "US", "fetched_at": "2024-01-02T09:00:00Z"}
-  ],
-  "analysis_date": "2024-01-02",
-  "analysis_timestamp": "2024-01-02T09:30:00Z",
-  "volatility_adjustment": 1.0,
-  "debate_quality_score": 7.5,
-  "symbol": "AAPL",
-  "market_type": "US",
-  "insufficient_data": false
-}
-```
-
-创建 `tests/fixtures/llm_responses/invalid_format_response.txt`：
-```
-I think Apple looks good. You should probably buy it. The stock has been going up lately and the fundamentals seem solid. My recommendation is bullish.
-```
-
-**P0-T8：安装依赖并验证原版框架**
+**P0-T3：验证 M3 修复（回测使用真实价格数据，非随机 mock）**
 ```bash
-pip install -r requirements.txt
-python -c "from tradingagents.graph.trading_graph import TradingAgentsGraph; print('✓ TradingAgents 原版可导入')"
+python -c "
+import inspect
+from pstds.backtest.runner import BacktestRunner
+runner = BacktestRunner()
+# 确认 _get_mock_prices 已被替换为真实数据获取
+assert hasattr(runner, '_get_real_prices'), '❌ BUG-003 未修复：_get_real_prices 方法不存在'
+src = inspect.getsource(runner._get_real_prices)
+assert 'random' not in src.lower() and 'mock' not in src.lower(), '❌ BUG-003 未修复：_get_real_prices 仍包含 random/mock 逻辑'
+print('✓ 回测引擎使用真实价格数据')
+"
 ```
 
-**P0-T9：创建阶段状态文件**
-```python
-# 创建 .pstds_phase.json
-import json
-state = {
-    "current_phase": 1,
-    "phase_name": "时间隔离层",
-    "completed_phases": [0],
-    "phase_0_completed_at": "now"
-}
-with open(".pstds_phase.json", "w") as f:
-    json.dump(state, f, indent=2, ensure_ascii=False, default=str)
+**P0-T4：验证 L5 修复（新闻时区统一 UTC）**
+```bash
+python -c "
+import inspect
+from pstds.data.adapters.yfinance_adapter import YFinanceAdapter
+src = inspect.getsource(YFinanceAdapter.get_news)
+assert 'tzinfo' in src or 'utc' in src.lower() or 'UTC' in src, '❌ L5 未修复：get_news 仍使用 naive datetime（无时区信息）'
+assert 'tz=None' not in src, '❌ L5 未修复：get_news 仍使用 tz=None'
+print('✓ 新闻时间戳使用 UTC')
+"
+```
+
+**P0-T5：验证阶段状态文件**
+```bash
+python -c "
+import json, os
+if not os.path.exists('.pstds_phase.json'):
+    state = {'current_phase': 1, 'phase_name': '功能补全', 'completed_phases': [0]}
+    json.dump(state, open('.pstds_phase.json', 'w'), indent=2, ensure_ascii=False)
+    print('✓ 创建阶段状态文件')
+else:
+    s = json.load(open('.pstds_phase.json'))
+    print(f'✓ 阶段状态文件存在，当前: Phase {s[\"current_phase\"]}')
+"
 ```
 
 ---
@@ -290,11 +93,22 @@ with open(".pstds_phase.json", "w") as f:
 ## Phase 0 完成门槛
 
 ```bash
-# 以下命令必须全部成功（无错误输出）
-python -c "from tradingagents.graph.trading_graph import TradingAgentsGraph; print('✓')"
-python -c "import pydantic, pymongo, streamlit, plotly, yfinance, akshare; print('✓ 依赖包正常')"
-python -c "import yaml; yaml.safe_load(open('config/default.yaml')); print('✓ 配置文件合法')"
-ls pstds/temporal/ pstds/data/adapters/ pstds/agents/ pstds/backtest/ && echo "✓ 目录结构正确"
-ls tests/fixtures/news/mixed_dates.json tests/fixtures/llm_responses/valid_trade_decision.json && echo "✓ Fixture 文件存在"
-docker compose ps | grep mongodb | grep healthy && echo "✓ MongoDB 运行正常"
+echo "=== Phase 0 验证 ==="
+
+# 1. 全套测试通过（零失败）
+pytest tests/ --tb=short -q
+# 期望：X passed, 0 failed
+
+# 2. 覆盖率满足基线
+pytest tests/ --cov=pstds/temporal --cov-fail-under=95 -q
+# 期望：pstds/temporal/ 覆盖率 > 95%
+
+# 3. 关键阻塞性用例
+pytest tests/unit/test_temporal_guard.py::test_future_timestamp_raises -v      # TG-003
+pytest tests/integration/test_backtest_no_lookahead.py::test_reg001_aapl_lookahead_elimination -v  # REG-001
+pytest tests/integration/test_backtest_no_lookahead.py::test_reg003_backtest_blocks_realtime_api -v # REG-003
+
+echo "=== Phase 0 通过，可进入 Phase 1 ==="
 ```
+
+> 若任何现有测试失败，先修复再继续。Phase 0 是 v3.0 所有新功能的基础，基础不稳不得前进。

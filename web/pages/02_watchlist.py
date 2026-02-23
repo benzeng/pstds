@@ -76,7 +76,7 @@ with st.form("add_stock_form"):
         final_market_type = market_type_input
 
         # 添加到持久化存储
-        success, message = store.add_stock(
+        success = store.add_stock(
             symbol=symbol_input.upper(),
             name=name_input,
             market_type=final_market_type,
@@ -85,10 +85,10 @@ with st.form("add_stock_form"):
         )
 
         if success:
-            st.success(message)
+            st.success(f"已添加: {symbol_input.upper()} - {name_input}")
             st.rerun()
         else:
-            st.error(message)
+            st.error(f"添加失败：{symbol_input.upper()} 可能已存在")
             st.info("💡 提示：如果股票已存在，请使用「批量设置」或「编辑」功能更新信息")
 
 st.markdown("---")

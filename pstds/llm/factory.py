@@ -200,11 +200,13 @@ class LLMFactory:
 
     def create(
         self,
-        provider: str,
-        model: str,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
         base_url: Optional[str] = None,
+        *,
+        market_type: Optional[str] = None,
         **kwargs
-    ) -> BaseLLMClient:
+    ) -> Any:
         """
         创建 LLM 客户端实例
 
@@ -212,14 +214,23 @@ class LLMFactory:
             provider: 提供商名称 (openai, anthropic, google, deepseek, dashscope, ollama)
             model: 模型名称
             base_url: API 端点 URL
+            market_type: 市场类型 ("CN_A" 时优先返回 DashScopeClient("qwen-max"))
             **kwargs: 额外参数
 
         Returns:
-            BaseLLMClient 实例
+            LLM 客户端实例
 
         Raises:
             ValueError: 提供商不支持
         """
+        # 市场类型优先：CN_A 使用 pstds DashScope 适配器
+        if market_type == "CN_A":
+            from pstds.llm.dashscope import DashScopeClient as PstdsDashScopeClient
+            return PstdsDashScopeClient("qwen-max")
+
+        if provider is None:
+            raise ValueError("必须指定 provider 或 market_type")
+
         provider_lower = provider.lower()
 
         # OpenAI 兼容客户端（OpenAI, Ollama, XAI, OpenRouter）
@@ -234,13 +245,15 @@ class LLMFactory:
         if provider_lower == "google":
             return GoogleClient(model, base_url, **kwargs)
 
-        # DeepSeek
+        # DeepSeek（pstds 新适配器，优先使用）
         if provider_lower == "deepseek":
-            return DeepSeekClient(model, base_url, **kwargs)
+            from pstds.llm.deepseek import DeepSeekClient as PstdsDeepSeekClient
+            return PstdsDeepSeekClient(model or "deepseek-chat")
 
-        # DashScope (阿里云 Qwen)
+        # DashScope (阿里云 Qwen，pstds 新适配器，优先使用)
         if provider_lower == "dashscope":
-            return DashScopeClient(model, base_url, **kwargs)
+            from pstds.llm.dashscope import DashScopeClient as PstdsDashScopeClient
+            return PstdsDashScopeClient(model or "qwen-max")
 
         raise ValueError(f"不支持的 LLM 提供商: {provider}")
 

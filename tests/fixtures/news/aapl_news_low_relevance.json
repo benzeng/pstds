@@ -1,0 +1,52 @@
+[
+  {
+    "title": "Sports championship results announced",
+    "content": "The basketball team won the national championship after an exciting final game. Thousands of fans celebrated in the streets.",
+    "published_at": "2024-01-01T08:00:00Z",
+    "source": "ESPN",
+    "url": "https://espn.com/1",
+    "relevance_score": 0.05,
+    "market_type": "US",
+    "symbol": "AAPL"
+  },
+  {
+    "title": "Winter weather forecast for northeastern states",
+    "content": "Heavy snowfall expected across northeastern states this weekend. Residents are advised to stay indoors and stock up on supplies.",
+    "published_at": "2024-01-01T09:00:00Z",
+    "source": "WeatherChannel",
+    "url": "https://weather.com/1",
+    "relevance_score": 0.03,
+    "market_type": "US",
+    "symbol": "AAPL"
+  },
+  {
+    "title": "New Italian restaurant opens in downtown Chicago",
+    "content": "A new Italian restaurant opened its doors in downtown Chicago, offering authentic pasta and pizza. The restaurant is already fully booked for the next month.",
+    "published_at": "2024-01-01T10:00:00Z",
+    "source": "FoodReview",
+    "url": "https://foodreview.com/1",
+    "relevance_score": 0.02,
+    "market_type": "US",
+    "symbol": "AAPL"
+  },
+  {
+    "title": "Local school district announces new curriculum changes",
+    "content": "The local school district has announced major curriculum changes for the upcoming academic year. The changes include new STEM programs and updated history courses.",
+    "published_at": "2024-01-01T11:00:00Z",
+    "source": "LocalNews",
+    "url": "https://localnews.com/1",
+    "relevance_score": 0.02,
+    "market_type": "US",
+    "symbol": "AAPL"
+  },
+  {
+    "title": "AAPL Apple iPhone sales break records this quarter",
+    "content": "Apple Inc reported record-breaking iPhone sales this quarter, beating analyst expectations by a wide margin. CEO Tim Cook praised the strong demand.",
+    "published_at": "2024-01-02T09:00:00Z",
+    "source": "Reuters",
+    "url": "https://reuters.com/1",
+    "relevance_score": 0.92,
+    "market_type": "US",
+    "symbol": "AAPL"
+  }
+]
